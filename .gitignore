@@ -1,0 +1,111 @@
+# ======================
+# Environment & Secrets
+# ======================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ======================
+# Python
+# ======================
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ======================
+# Jupyter Notebooks
+# ======================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ======================
+# Testing & Coverage
+# ======================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+coverage.xml
+
+# ======================
+# Qdrant Local Storage
+# ======================
+qdrant_storage/
+qdrant_snapshots/
+
+# ======================
+# Uploaded PDFs & Data
+# ======================
+backend/data/
+backend/uploads/
+*.pdf
+*.csv
+*.json
+!backend/evaluation/sample_qa.json
+
+# ======================
+# Model Cache
+# ======================
+# sentence-transformers downloads models here
+.cache/
+~/.cache/huggingface/
+models/
+
+# ======================
+# Node / React Frontend
+# ======================
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# ======================
+# Docker
+# ======================
+docker-compose.override.yml
+
+# ======================
+# IDEs & Editors
+# ======================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# ======================
+# Logs
+# ======================
+*.log
+logs/
+
+# ======================
+# Test Files
+# ======================
+test_gemini.py
+test_groq.py
+test_embeddings.py
+
+.env
+.env.*
+!.env.example
