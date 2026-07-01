@@ -109,43 +109,31 @@ def embed_chunks(chunks: list[dict]) -> list[dict]:
 def upload_to_qdrant(chunks: list[dict]) -> int:
     """
     Upload embedded chunks to Qdrant as points.
-
-    A Qdrant "point" has:
-        - id:      unique identifier (we use UUID)
-        - vector:  the embedding (384 floats)
-        - payload: all metadata (everything except the embedding itself)
-
-    Args:
-        chunks: Chunks with 'embedding' field (output of embed_chunks)
-
-    Returns:
-        Number of points successfully uploaded
+    ...
     """
     points = []
 
     for chunk in chunks:
-        # Build payload — everything EXCEPT the embedding vector
-        # This is what gets returned alongside search results
         payload = {
-            "text":            chunk["text"],          # child text
-            "parent_text":     chunk["parent_text"],   # full context for LLM
+            "text":            chunk["text"],
+            "parent_text":     chunk["parent_text"],
             "page_number":     chunk["page_number"],
             "source_file":     chunk["source_file"],
             "section_header":  chunk["section_header"],
             "chunk_id":        chunk["chunk_id"],
             "parent_chunk_id": chunk["parent_chunk_id"],
             "chunk_index":     chunk["chunk_index"],
+            "chunk_type":      chunk["chunk_type"],   # ← new: "text" or "table"
         }
 
         points.append(
             PointStruct(
-                id=str(uuid.uuid4()),   # unique UUID per point
+                id=str(uuid.uuid4()),
                 vector=chunk["embedding"],
                 payload=payload
             )
         )
 
-    # Upload in batches to avoid memory issues with large PDFs
     for i in range(0, len(points), BATCH_SIZE):
         batch = points[i : i + BATCH_SIZE]
         qdrant.upsert(
@@ -155,7 +143,6 @@ def upload_to_qdrant(chunks: list[dict]) -> int:
 
     print(f"Uploaded {len(points)} points to Qdrant collection '{COLLECTION_NAME}'")
     return len(points)
-
 
 # ── Main Pipeline Function ───────────────────────────────────────────────────
 
