@@ -9,6 +9,9 @@
 #   - parent_text travels as payload (not embedded)
 #   - We batch embed for efficiency (not one-by-one API calls)
 #   - Collection is created if it doesn't exist (idempotent)
+#   - Point IDs are DETERMINISTIC (derived from chunk_id), not random —
+#     this makes re-running embedder.py on the same PDF idempotent:
+#     it overwrites existing points instead of creating duplicates.
 
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
@@ -18,6 +21,7 @@ from qdrant_client.models import (
     PointStruct,
 )
 import uuid
+import hashlib
 
 
 # ── Constants ───────────────────────────────────────────────────────────────
@@ -29,10 +33,7 @@ BATCH_SIZE      = 32         # how many chunks to embed + upload at once
 
 # ── Init ────────────────────────────────────────────────────────────────────
 
-# Load embedding model once at module level (expensive to reload per call)
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# Connect to local Qdrant instance
 qdrant = QdrantClient(host="localhost", port=6333)
 
 
@@ -41,12 +42,6 @@ qdrant = QdrantClient(host="localhost", port=6333)
 def ensure_collection_exists():
     """
     Create the Qdrant collection if it doesn't already exist.
-
-    A collection in Qdrant = a table in SQL.
-    We define:
-        - vector size (must match embedding model output = 384)
-        - distance metric (Cosine = standard for semantic similarity)
-
     Idempotent: safe to call multiple times.
     """
     existing = [c.name for c in qdrant.get_collections().collections]
@@ -56,7 +51,7 @@ def ensure_collection_exists():
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
                 size=EMBEDDING_DIM,
-                distance=Distance.COSINE  # cosine similarity for semantic search
+                distance=Distance.COSINE
             )
         )
         print(f"Created collection: {COLLECTION_NAME}")
@@ -64,42 +59,45 @@ def ensure_collection_exists():
         print(f"Collection already exists: {COLLECTION_NAME}")
 
 
+# ── Point ID Generation ──────────────────────────────────────────────────────
+
+def chunk_id_to_point_id(chunk_id: str) -> str:
+    """
+    Deterministic UUID derived from chunk_id.
+
+    Why: PointStruct previously used uuid.uuid4() (random) for id, which
+    meant re-running embedder.py on the same PDF created brand-new points
+    every time instead of overwriting the old ones — Qdrant's upsert only
+    overwrites when the ID matches exactly. Random IDs never match, so every
+    test run silently accumulated duplicate copies of the same chunks.
+
+    Fix: hash chunk_id (which is itself deterministic — same file + same
+    page + same chunk index always produces the same chunk_id) into a
+    stable UUID. Same content → same point ID → upsert overwrites instead
+    of duplicating. Different content → different chunk_id → different
+    point ID → no collision.
+    """
+    return str(uuid.UUID(hashlib.md5(chunk_id.encode()).hexdigest()))
+
+
 # ── Embedding ───────────────────────────────────────────────────────────────
 
 def embed_chunks(chunks: list[dict]) -> list[dict]:
     """
     Add an 'embedding' field to each chunk by embedding its child text.
-
-    Args:
-        chunks: Output from chunk_pages()
-
-    Returns:
-        Same chunks with 'embedding' field added:
-        [
-            {
-                ...existing fields...,
-                "embedding": [0.023, -0.045, 0.011, ...]  # 384 floats
-            }
-        ]
-
-    Why batch?
-        SentenceTransformer.encode() processes a list at once using
-        matrix operations — much faster than calling encode() in a loop.
     """
-    texts = [chunk["text"] for chunk in chunks]  # extract child texts
+    texts = [chunk["text"] for chunk in chunks]
 
     print(f"Embedding {len(texts)} chunks in batches of {BATCH_SIZE}...")
 
-    # encode() returns a numpy array of shape (num_chunks, 384)
     embeddings = embedding_model.encode(
         texts,
         batch_size=BATCH_SIZE,
-        show_progress_bar=True  # shows a progress bar in terminal
+        show_progress_bar=True
     )
 
-    # Attach embedding back to each chunk dict
     for chunk, embedding in zip(chunks, embeddings):
-        chunk["embedding"] = embedding.tolist()  # numpy → plain Python list for JSON serialization
+        chunk["embedding"] = embedding.tolist()
 
     return chunks
 
@@ -109,7 +107,10 @@ def embed_chunks(chunks: list[dict]) -> list[dict]:
 def upload_to_qdrant(chunks: list[dict]) -> int:
     """
     Upload embedded chunks to Qdrant as points.
-    ...
+
+    Point ID is now derived deterministically from chunk_id (see
+    chunk_id_to_point_id) instead of a random UUID — re-uploading the
+    same PDF overwrites existing points rather than duplicating them.
     """
     points = []
 
@@ -123,12 +124,12 @@ def upload_to_qdrant(chunks: list[dict]) -> int:
             "chunk_id":        chunk["chunk_id"],
             "parent_chunk_id": chunk["parent_chunk_id"],
             "chunk_index":     chunk["chunk_index"],
-            "chunk_type":      chunk["chunk_type"],   # ← new: "text" or "table"
+            "chunk_type":      chunk["chunk_type"],
         }
 
         points.append(
             PointStruct(
-                id=str(uuid.uuid4()),
+                id=chunk_id_to_point_id(chunk["chunk_id"]),   # ← deterministic, not random
                 vector=chunk["embedding"],
                 payload=payload
             )
@@ -144,19 +145,12 @@ def upload_to_qdrant(chunks: list[dict]) -> int:
     print(f"Uploaded {len(points)} points to Qdrant collection '{COLLECTION_NAME}'")
     return len(points)
 
+
 # ── Main Pipeline Function ───────────────────────────────────────────────────
 
 def embed_and_store(chunks: list[dict]) -> int:
     """
     Full pipeline: ensure collection → embed → upload.
-
-    This is the function called by routes_upload.py later.
-
-    Args:
-        chunks: Output from chunk_pages()
-
-    Returns:
-        Number of points stored in Qdrant
     """
     ensure_collection_exists()
     chunks_with_embeddings = embed_chunks(chunks)
@@ -178,7 +172,6 @@ if __name__ == "__main__":
         print("Usage: python embedder.py <path_to_pdf>")
         sys.exit(1)
 
-    # Full ingestion pipeline
     print("Step 1: Parsing PDF...")
     pages = parse_pdf(sys.argv[1])
     print(f"  → {len(pages)} pages extracted")
