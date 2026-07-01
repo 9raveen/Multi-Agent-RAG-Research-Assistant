@@ -30,6 +30,14 @@ async def upload_pdf(file: UploadFile = File(...)):
         if not pages:
             raise HTTPException(status_code=422, detail="No extractable content found in PDF.")
 
+        # parse_pdf() stamps source_file from the temp file's name (random,
+        # e.g. "tmpxyz123.pdf") since that's the path it was given on disk.
+        # Override it here with the real uploaded filename BEFORE chunking,
+        # so every downstream chunk_id, citation, and payload reflects what
+        # the user actually uploaded — not an internal temp artifact.
+        for page in pages:
+            page["source_file"] = file.filename
+
         chunks = chunk_pages(pages)
         tables_detected = sum(len(p.get("tables", [])) for p in pages)
 
