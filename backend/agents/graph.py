@@ -53,14 +53,17 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python graph.py '<your question>'")
+        print("Usage: python graph.py '<question>' [document_scope]")
         sys.exit(1)
 
     query = sys.argv[1]
+    document_scope = sys.argv[2] if len(sys.argv) > 2 else None
+
     graph = build_graph()
 
     initial_state = {
         "query": query,
+        "document_scope": document_scope,
         "retrieved_chunks": [],
         "synthesis_output": "",
         "critique_passed": False,
