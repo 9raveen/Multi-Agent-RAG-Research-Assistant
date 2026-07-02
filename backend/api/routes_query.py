@@ -23,6 +23,7 @@ def run_query(request: QueryRequest):
 
     initial_state = {
         "query": request.query,
+        "document_scope": request.document_scope,
         "retrieved_chunks": [],
         "synthesis_output": "",
         "critique_passed": False,
@@ -48,6 +49,7 @@ def run_query(request: QueryRequest):
 
     return QueryResponse(
         query=result["query"],
+        document_scope=request.document_scope,
         answer=result["synthesis_output"],
         critique_passed=result["critique_passed"],
         revisions_taken=result["revision_count"],

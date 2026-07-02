@@ -7,10 +7,12 @@ from pydantic import BaseModel
 
 class QueryRequest(BaseModel):
     query: str
+    document_scope: str | None = None
 
 
 class QueryResponse(BaseModel):
     query: str
+    document_scope: str | None = None   # optional — filename to restrict search to
     answer: str
     critique_passed: bool
     revisions_taken: int
