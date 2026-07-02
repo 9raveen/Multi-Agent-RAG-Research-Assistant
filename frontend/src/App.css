@@ -149,3 +149,9 @@ button:disabled {
   color: #818cf8;
   font-size: 0.75rem;
 }
+
+.scope-hint {
+  color: #818cf8;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}

@@ -21,11 +21,11 @@ export async function uploadPdf(file) {
   return response.json();
 }
 
-export async function askQuery(query) {
+export async function askQuery(query, documentScope = null) {
   const response = await fetch(`${BASE_URL}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, document_scope: documentScope }),
   });
 
   if (!response.ok) {
