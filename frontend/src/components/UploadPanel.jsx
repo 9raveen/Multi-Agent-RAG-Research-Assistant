@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { uploadPdf } from "../api";
 
-export default function UploadPanel() {
+export default function UploadPanel({ onUploadSuccess }) {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | uploading | success | error
   const [result, setResult] = useState(null);
@@ -17,6 +17,7 @@ export default function UploadPanel() {
       const data = await uploadPdf(file);
       setResult(data);
       setStatus("success");
+      onUploadSuccess?.(data.filename); // ← notify parent
     } catch (err) {
       setError(err.message);
       setStatus("error");

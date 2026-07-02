@@ -2,7 +2,7 @@ import { useState } from "react";
 import { askQuery } from "../api";
 import AnswerCard from "./AnswerCard";
 
-export default function QueryPanel() {
+export default function QueryPanel({ documentScope }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [result, setResult] = useState(null);
@@ -16,7 +16,7 @@ export default function QueryPanel() {
     setResult(null);
 
     try {
-      const data = await askQuery(query);
+      const data = await askQuery(query, documentScope);
       setResult(data);
       setStatus("success");
     } catch (err) {
@@ -28,6 +28,9 @@ export default function QueryPanel() {
   return (
     <div className="panel">
       <h2>Ask a Question</h2>
+      {documentScope && (
+        <p className="scope-hint">Searching within: {documentScope}</p>
+      )}
       <textarea
         value={query}
         onChange={(e) => setQuery(e.target.value)}
