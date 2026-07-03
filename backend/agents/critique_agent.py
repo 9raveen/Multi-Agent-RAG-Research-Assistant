@@ -6,7 +6,7 @@
 import sys, os, json
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from groq import Groq
+from groq import Groq, RateLimitError
 from dotenv import load_dotenv
 
 from retrieval.retriever import format_chunks_for_prompt
@@ -46,21 +46,28 @@ Evaluate this answer."""
 
     print(f"[critique_node] reviewing answer (revision {revision_count})")
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": CRITIQUE_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.0,  # deterministic — this is a judgment call, not creative
-    )
-
-    raw = response.choices[0].message.content.strip()
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": CRITIQUE_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+            max_tokens=150,
+        )
+        raw = response.choices[0].message.content.strip()
+    except RateLimitError as e:
+        print(f"[critique_node] RATE LIMIT hit — treating as not passed, no retry. {e}")
+        return {
+            "critique_passed": False,
+            "critique_feedback": "critique skipped — Groq rate limit reached",
+            "revision_count": revision_count,
+        }
 
     # Fail-safe parsing: if the LLM doesn't return clean JSON, default to
     # passed=False rather than blindly accepting a possibly-bad answer.
     try:
-        # Strip markdown code fences if the model wrapped the JSON in ```json ... ```
         if raw.startswith("```"):
             raw = raw.strip("`").replace("json", "", 1).strip()
         parsed = json.loads(raw)

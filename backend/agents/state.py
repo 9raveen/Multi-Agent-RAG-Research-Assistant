@@ -12,3 +12,4 @@ class ResearchState(TypedDict):
     critique_passed: bool
     critique_feedback: str              # WHY it passed/failed — used to steer retry
     revision_count: int
+    rate_limited: bool

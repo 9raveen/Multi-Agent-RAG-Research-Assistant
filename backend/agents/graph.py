@@ -16,6 +16,8 @@ MAX_REVISIONS = 3
 
 
 def route_after_critique(state: ResearchState) -> str:
+    if state.get("rate_limited"):
+        return "give_up"  # never retry into a known rate limit
     if state["critique_passed"]:
         return "done"
     elif state["revision_count"] >= MAX_REVISIONS:
@@ -69,6 +71,7 @@ if __name__ == "__main__":
         "critique_passed": False,
         "critique_feedback": "",
         "revision_count": 0,
+        "rate_limited": False,  
     }
 
     result = graph.invoke(initial_state)

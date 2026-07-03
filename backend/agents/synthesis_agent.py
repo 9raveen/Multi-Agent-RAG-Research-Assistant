@@ -1,11 +1,8 @@
 # synthesis_agent.py
-# Node responsibility: generate an answer to the query using ONLY the retrieved chunks.
-# Uses Groq (llama-3.3-70b-versatile).
-
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from groq import Groq
+from groq import Groq, RateLimitError
 from dotenv import load_dotenv
 
 from retrieval.retriever import format_chunks_for_prompt
@@ -40,19 +37,26 @@ Answer using only the context above."""
 
     print(f"[synthesis_node] generating answer from {len(chunks)} chunks")
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.2,  # low temp — we want grounded, not creative
-    )
-
-    answer = response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=500,
+        )
+        answer = response.choices[0].message.content
+        rate_limited = False
+    except RateLimitError as e:
+        print(f"[synthesis_node] RATE LIMIT hit — returning empty answer, no retry. {e}")
+        answer = "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated."
+        rate_limited = True
 
     print(f"[synthesis_node] answer: {answer[:200]}...")
 
     return {
-        "synthesis_output": answer
+        "synthesis_output": answer,
+        "rate_limited": rate_limited,
     }
