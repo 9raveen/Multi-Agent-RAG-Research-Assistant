@@ -1,7 +1,9 @@
+import AgentTracePanel from "./AgentTracePanel";
+
 export default function AnswerCard({ result }) {
   if (!result) return null;
 
-  const { answer, critique_passed, revisions_taken, sources } = result;
+  const { answer, critique_passed, revisions_taken, sources, trace } = result;
 
   return (
     <div className="answer-card">
@@ -28,6 +30,8 @@ export default function AnswerCard({ result }) {
           </ul>
         </div>
       )}
+
+      <AgentTracePanel trace={trace} />
     </div>
   );
 }
