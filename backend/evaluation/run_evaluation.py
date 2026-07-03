@@ -67,13 +67,11 @@ def run_pipeline_on_benchmark(document_scope: str | None = None) -> list[dict]:
             "critique_passed": False,
             "critique_feedback": "",
             "revision_count": 0,
+            "rate_limited": False,
+            "previous_answer": "",
         }
 
         result = graph.invoke(initial_state)
-
-        # RAGAS expects "contexts" as a list of plain strings — use the
-        # child text (not parent_text) since that's what was actually
-        # matched/retrieved, keeping this aligned with what retrieval scored.
         contexts = [chunk["text"] for chunk in result["retrieved_chunks"]]
 
         collected.append({
@@ -81,9 +79,9 @@ def run_pipeline_on_benchmark(document_scope: str | None = None) -> list[dict]:
             "answer": result["synthesis_output"],
             "contexts": contexts,
             "ground_truth": item["ground_truth"],
-            # Extra fields kept for your own debugging, not used by RAGAS directly
             "_critique_passed": result["critique_passed"],
             "_revisions_taken": result["revision_count"],
+            "_rate_limited": result.get("rate_limited", False),  # NEW — carry the flag through
         })
 
     return collected
@@ -105,6 +103,18 @@ def score_with_ragas(collected: list[dict]):
     branch while requests still physically go to Groq's servers.
     """
     from openai import OpenAI as OpenAICompatibleClient
+    
+    # Exclude infrastructure failures from scoring — they measure Groq's
+    # rate limit, not the pipeline's actual retrieval/synthesis quality.
+    scoreable = [item for item in collected if not item["_rate_limited"]]
+    skipped = len(collected) - len(scoreable)
+    if skipped:
+        print(f"\n⚠️  Excluding {skipped} rate-limited question(s) from RAGAS scoring "
+              f"(infrastructure failure, not a pipeline quality signal)")
+
+    if not scoreable:
+        raise RuntimeError("No scoreable results — all questions were rate-limited.")
+
 
     groq_client = OpenAICompatibleClient(
         api_key=os.getenv("GROQ_API_KEY"),
@@ -122,7 +132,7 @@ def score_with_ragas(collected: list[dict]):
             "retrieved_contexts": item["contexts"],
             "reference": item["ground_truth"],
         }
-        for item in collected
+        for item in scoreable 
     ])
 
     metrics = [
