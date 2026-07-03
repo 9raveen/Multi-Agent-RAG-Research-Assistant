@@ -23,15 +23,12 @@ _stub.ChatVertexAI = ChatVertexAI
 sys.modules["langchain_community.chat_models.vertexai"] = _stub
 # ── End workaround ──
 
-from groq import Groq
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
-from ragas import evaluate, EvaluationDataset
+from ragas import evaluate, EvaluationDataset, RunConfig
 from openai import OpenAI as OpenAICompatibleClient
 from ragas.llms import llm_factory
-from ragas.embeddings import embedding_factory
-from ragas.embeddings import HuggingFaceEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings as LangchainHFEmbeddings
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.metrics import (
@@ -113,7 +110,7 @@ def score_with_ragas(collected: list[dict]):
         api_key=os.getenv("GROQ_API_KEY"),
         base_url="https://api.groq.com/openai/v1",
     )
-    judge_llm = llm_factory("llama-3.3-70b-versatile", provider="openai", client=groq_client)
+    judge_llm = llm_factory("llama-3.1-8b-instant", provider="openai", client=groq_client)
 
     langchain_embeddings = LangchainHFEmbeddings(model_name="all-MiniLM-L6-v2")
     ragas_embeddings = LangchainEmbeddingsWrapper(langchain_embeddings)
@@ -136,7 +133,11 @@ def score_with_ragas(collected: list[dict]):
     ]
 
     print("\nRunning RAGAS evaluation...")
-    results = evaluate(dataset=dataset, metrics=metrics)
+    results = evaluate(
+    dataset=dataset,
+    metrics=metrics,
+    run_config=RunConfig(max_workers=2),
+)
 
     return results
 
@@ -144,14 +145,19 @@ def score_with_ragas(collected: list[dict]):
 def save_results(collected: list[dict], scores):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # Raw per-query results — useful for debugging which specific
-    # question dragged a metric down.
     raw_path = os.path.join(RESULTS_DIR, f"raw_results_{timestamp}.json")
     with open(raw_path, "w", encoding="utf-8") as f:
         json.dump(collected, f, indent=2, ensure_ascii=False)
 
-    # Aggregate scores — this is your resume-line source of truth.
-    scores_dict = scores.to_pandas().mean(numeric_only=True).to_dict()
+    df = scores.to_pandas()
+
+    # Flag any per-question NaNs BEFORE averaging them away
+    nan_counts = df.isna().sum()
+    if nan_counts.any():
+        print("\n⚠️  WARNING — some metric scores are NaN (likely rate limit / quota):")
+        print(nan_counts[nan_counts > 0])
+
+    scores_dict = df.mean(numeric_only=True).to_dict()
     scores_path = os.path.join(RESULTS_DIR, f"scores_{timestamp}.json")
     with open(scores_path, "w", encoding="utf-8") as f:
         json.dump(scores_dict, f, indent=2)
@@ -168,6 +174,7 @@ if __name__ == "__main__":
     # Optional: scope the whole benchmark run to one document,
     # e.g. python run_evaluation.py "4) gradient descent (GD) and variants.pptx.pdf"
     document_scope = sys.argv[1] if len(sys.argv) > 1 else None
+    #BENCHMARK = BENCHMARK[:1]  # TEMP — validate 1 question before full run
 
     print(f"Running benchmark ({len(BENCHMARK)} questions), scope={document_scope or 'ALL documents'}\n")
 
