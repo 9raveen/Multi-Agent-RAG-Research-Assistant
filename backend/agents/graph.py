@@ -17,13 +17,17 @@ MAX_REVISIONS = 3
 
 def route_after_critique(state: ResearchState) -> str:
     if state.get("rate_limited"):
-        return "give_up"  # never retry into a known rate limit
+        return "give_up"
     if state["critique_passed"]:
         return "done"
-    elif state["revision_count"] >= MAX_REVISIONS:
+    if state["revision_count"] >= MAX_REVISIONS:
         return "give_up"
-    else:
-        return "retry"
+    # NEW: if research/synthesis produced the exact same answer as last attempt,
+    # retrying again won't change the substance — only critique's non-deterministic
+    # verdict changes. Stop here instead of burning another full cycle on noise.
+    if state["synthesis_output"] == state.get("previous_answer", ""):
+        return "give_up"
+    return "retry"
 
 
 def build_graph():
