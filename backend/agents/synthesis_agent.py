@@ -59,4 +59,5 @@ Answer using only the context above."""
     return {
         "synthesis_output": answer,
         "rate_limited": rate_limited,
+        "previous_answer": state.get("synthesis_output", ""),  # captures OLD answer, BEFORE this call
     }

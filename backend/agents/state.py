@@ -13,3 +13,4 @@ class ResearchState(TypedDict):
     critique_feedback: str              # WHY it passed/failed — used to steer retry
     revision_count: int
     rate_limited: bool
+    previous_answer: str  # NEW — tracks last synthesis output for staleness check
