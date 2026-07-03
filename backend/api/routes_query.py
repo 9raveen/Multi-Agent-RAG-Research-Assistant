@@ -29,14 +29,32 @@ def run_query(request: QueryRequest):
         "critique_passed": False,
         "critique_feedback": "",
         "revision_count": 0,
+        "rate_limited": False,
+        "previous_answer": "",
     }
 
+    trace = []
+    cumulative_state = dict(initial_state)  # running full-state snapshot
+    final_state = None
+
     try:
-        result = graph.invoke(initial_state)
+        for step_output in graph.stream(initial_state):
+            for node_name, node_state in step_output.items():
+                cumulative_state.update(node_state)  # merge partial → running state
+                trace.append({
+                    "node": node_name,
+                    "revision": cumulative_state.get("revision_count", 0),
+                    "rate_limited": cumulative_state.get("rate_limited", False),
+                    "critique_passed": cumulative_state.get("critique_passed"),
+                    "critique_feedback": cumulative_state.get("critique_feedback"),
+                    "chunks_retrieved": len(cumulative_state.get("retrieved_chunks", [])),
+                })
+                final_state = cumulative_state
     except Exception as e:
-        # Covers Qdrant/Groq connection failures, etc. — surfaced as 500,
-        # not a silent crash, so the frontend can show a real error message.
         raise HTTPException(status_code=500, detail=f"Pipeline execution failed: {str(e)}")
+
+    if final_state is None:
+        raise HTTPException(status_code=500, detail="Pipeline produced no output.")
 
     sources = [
         {
@@ -44,14 +62,20 @@ def run_query(request: QueryRequest):
             "source_file": chunk["source_file"],
             "chunk_type": chunk["chunk_type"],
         }
-        for chunk in result["retrieved_chunks"]
+        for chunk in final_state["retrieved_chunks"]
     ]
 
     return QueryResponse(
-        query=result["query"],
+        query=final_state["query"],
         document_scope=request.document_scope,
-        answer=result["synthesis_output"],
-        critique_passed=result["critique_passed"],
-        revisions_taken=result["revision_count"],
+        answer=final_state["synthesis_output"],
+        critique_passed=final_state["critique_passed"],
+        revisions_taken=final_state["revision_count"],
         sources=sources,
+        trace=trace,
     )
+
+        # .stream() instead of .invoke() — captures each node's output as it
+        # fires, including every retry attempt, not just the final result.
+        # Needed for the agent trace panel; .invoke() collapses intermediate
+        # states and would only show the last thing that happened.

@@ -10,6 +10,15 @@ class QueryRequest(BaseModel):
     document_scope: str | None = None
 
 
+class TraceStep(BaseModel):
+    node: str
+    revision: int
+    rate_limited: bool
+    critique_passed: bool | None
+    critique_feedback: str | None
+    chunks_retrieved: int
+
+
 class QueryResponse(BaseModel):
     query: str
     document_scope: str | None = None   # optional — filename to restrict search to
@@ -17,6 +26,7 @@ class QueryResponse(BaseModel):
     critique_passed: bool
     revisions_taken: int
     sources: list[dict]   # page_number, source_file, chunk_type per retrieved chunk
+    trace: list[TraceStep]  # NEW — per-node pipeline trace, powers the agent trace panel
 
 
 class UploadResponse(BaseModel):
