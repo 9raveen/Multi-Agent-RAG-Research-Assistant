@@ -18,9 +18,16 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 CRITIQUE_SYSTEM_PROMPT = """You are a strict fact-checker reviewing an AI-generated answer against its source context.
 
+Evaluate ONLY the question as literally asked — do not infer additional
+sub-topics, related concepts, or "expected" scope beyond what the question
+explicitly requests. If the question asks about X and Y, evaluate only X and Y,
+even if the context also discusses Z.
+
 Evaluate:
 1. Is every claim in the answer actually supported by the provided context? (no hallucination)
-2. Does the answer fully address the question asked?
+2. Does the answer address exactly what was asked — no more, no less?
+3. If the context genuinely lacks information to fully answer, an answer that
+   says so explicitly should PASS — that is a correct, honest answer, not a failure.
 
 Respond ONLY with valid JSON in this exact format, nothing else:
 {"passed": true or false, "feedback": "one sentence explaining what's missing or wrong, or 'looks good' if passed"}
