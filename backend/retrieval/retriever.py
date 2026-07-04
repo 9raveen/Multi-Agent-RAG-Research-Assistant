@@ -2,24 +2,27 @@
 # Responsibility: Query Qdrant for relevant chunks given a text query.
 # Embeds the query with the SAME model used during ingestion (all-MiniLM-L6-v2)
 # — using a different model here would produce an incompatible vector space.
+#
+# Embedding model is lazy-loaded via get_embedding_model() — shared with
+# embedder.py through retrieval/embedding_model.py, so the model loads
+# only once across the whole app, not once per module.
 
-from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 import os
 from dotenv import load_dotenv
-from retrieval.embedding_model import embedding_model
+from retrieval.embedding_model import get_embedding_model
 
 load_dotenv()
 
 COLLECTION_NAME = "research_documents"
-
 
 # Qdrant Cloud connection — was QdrantClient(host="localhost", port=6333)
 qdrant = QdrantClient(
     url=os.getenv("QDRANT_URL"),
     api_key=os.getenv("QDRANT_API_KEY"),
 )
+
 
 def retrieve(query: str, top_k: int = 5, source_file: str | None = None) -> list[dict]:
     """
@@ -28,7 +31,8 @@ def retrieve(query: str, top_k: int = 5, source_file: str | None = None) -> list
     — prevents cross-document contamination (e.g. asking about doc A and
     getting answers pulled from an unrelated doc B sitting in the same collection).
     """
-    query_vector = embedding_model.encode(query).tolist()
+    model = get_embedding_model()  # lazy load — reuses the same instance embedder.py loaded
+    query_vector = model.encode(query).tolist()
 
     query_filter = None
     if source_file:
@@ -76,7 +80,6 @@ def format_chunks_for_prompt(chunks: list[dict]) -> str:
             content = chunk["parent_text"]
         blocks.append(f"{source_line}\n{content}")
     return "\n\n---\n\n".join(blocks)
-
 
 
 # ── Quick test ──────────────────────────────────────────────────────────────

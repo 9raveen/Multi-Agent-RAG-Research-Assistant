@@ -12,21 +12,24 @@
 #   - Point IDs are DETERMINISTIC (derived from chunk_id), not random —
 #     this makes re-running embedder.py on the same PDF idempotent:
 #     it overwrites existing points instead of creating duplicates.
+#   - Embedding model is lazy-loaded via get_embedding_model() — not loaded
+#     at import time, to reduce memory footprint on constrained hosts (Render
+#     free tier hit 512MB OOM when the model loaded eagerly on both this
+#     module and retriever.py at startup).
 
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
-from qdrant_client.models import PayloadSchemaType
-
 from qdrant_client.models import (
     Distance,
     VectorParams,
     PointStruct,
+    PayloadSchemaType,
 )
 import uuid
 import hashlib
 import os
 from dotenv import load_dotenv
-from retrieval.embedding_model import embedding_model
+from retrieval.embedding_model import get_embedding_model
 
 load_dotenv()
 
@@ -39,8 +42,6 @@ BATCH_SIZE      = 32         # how many chunks to embed + upload at once
 
 # ── Init ────────────────────────────────────────────────────────────────────
 
-
-
 # Qdrant Cloud connection — was QdrantClient(host="localhost", port=6333).
 # Cloud requires a full URL + API key rather than host/port, since it's
 # authenticated over HTTPS rather than an unauthenticated local Docker instance.
@@ -49,9 +50,8 @@ qdrant = QdrantClient(
     api_key=os.getenv("QDRANT_API_KEY"),
 )
 
-# ── Collection Setup ────────────────────────────────────────────────────────
 
-from qdrant_client.models import PayloadSchemaType
+# ── Collection Setup ────────────────────────────────────────────────────────
 
 def ensure_collection_exists():
     """
@@ -84,6 +84,7 @@ def ensure_collection_exists():
     )
     print("Ensured payload index on 'source_file'")
 
+
 # ── Point ID Generation ──────────────────────────────────────────────────────
 
 def chunk_id_to_point_id(chunk_id: str) -> str:
@@ -115,7 +116,8 @@ def embed_chunks(chunks: list[dict]) -> list[dict]:
 
     print(f"Embedding {len(texts)} chunks in batches of {BATCH_SIZE}...")
 
-    embeddings = embedding_model.encode(
+    model = get_embedding_model()  # lazy load — only happens on first real use
+    embeddings = model.encode(
         texts,
         batch_size=BATCH_SIZE,
         show_progress_bar=True
@@ -209,5 +211,5 @@ if __name__ == "__main__":
     count = embed_and_store(chunks)
 
     print(f"\n✓ Done. {count} vectors stored in Qdrant.")
-    print(f"  Open http://localhost:6333/dashboard → Collections → {COLLECTION_NAME}")
+    print(f"  Open Qdrant Cloud dashboard → Collections → {COLLECTION_NAME}")
     print(f"  You should see {count} points.")
