@@ -15,9 +15,13 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# CORS: allow the deployed Vercel frontend (production + preview URLs).
+# No trailing slash on the origin — browsers send Origin without one,
+# so a trailing slash here would silently fail to match.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://multi-agent-rag-research-assistant.vercel.app/"],  # update after Vercel deploy
+    allow_origins=["https://multi-agent-rag-research-assistant.vercel.app"],
+    allow_origin_regex=r"https://multi-agent-rag-research-assistant-.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,26 +31,12 @@ app.include_router(query_router)
 app.include_router(upload_router)
 app.include_router(evaluation_router)
 
+
 @app.on_event("startup")
 async def preload_model():
     print("Pre-loading embedding model at startup...")
     get_embedding_model()
     print("Embedding model ready.")
-
-from api.routes_evaluation import router as evaluation_router
-app.include_router(evaluation_router)
-# CORS: allows the React frontend (Phase 4, likely running on localhost:3000
-# or similar during dev) to call this API from the browser. Wide open for
-# now — tighten to specific origins before actual deployment.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(query_router)
-app.include_router(upload_router)
 
 
 @app.get("/health")
