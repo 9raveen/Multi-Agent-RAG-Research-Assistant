@@ -8,12 +8,12 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 import os
 from dotenv import load_dotenv
+from retrieval.embedding_model import embedding_model
 
 load_dotenv()
 
 COLLECTION_NAME = "research_documents"
 
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Qdrant Cloud connection — was QdrantClient(host="localhost", port=6333)
 qdrant = QdrantClient(

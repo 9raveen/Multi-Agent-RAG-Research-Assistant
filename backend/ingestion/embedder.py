@@ -26,6 +26,7 @@ import uuid
 import hashlib
 import os
 from dotenv import load_dotenv
+from retrieval.embedding_model import embedding_model
 
 load_dotenv()
 
@@ -38,7 +39,7 @@ BATCH_SIZE      = 32         # how many chunks to embed + upload at once
 
 # ── Init ────────────────────────────────────────────────────────────────────
 
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
 
 # Qdrant Cloud connection — was QdrantClient(host="localhost", port=6333).
 # Cloud requires a full URL + API key rather than host/port, since it's
@@ -82,7 +83,7 @@ def ensure_collection_exists():
         field_schema=PayloadSchemaType.KEYWORD,
     )
     print("Ensured payload index on 'source_file'")
-    
+
 # ── Point ID Generation ──────────────────────────────────────────────────────
 
 def chunk_id_to_point_id(chunk_id: str) -> str:
