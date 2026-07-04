@@ -6,12 +6,20 @@
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 COLLECTION_NAME = "research_documents"
 
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-qdrant = QdrantClient(host="localhost", port=6333)
 
+# Qdrant Cloud connection — was QdrantClient(host="localhost", port=6333)
+qdrant = QdrantClient(
+    url=os.getenv("QDRANT_URL"),
+    api_key=os.getenv("QDRANT_API_KEY"),
+)
 
 def retrieve(query: str, top_k: int = 5, source_file: str | None = None) -> list[dict]:
     """
