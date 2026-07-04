@@ -15,6 +15,8 @@
 
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
+from qdrant_client.models import PayloadSchemaType
+
 from qdrant_client.models import (
     Distance,
     VectorParams,
@@ -22,7 +24,10 @@ from qdrant_client.models import (
 )
 import uuid
 import hashlib
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # ── Constants ───────────────────────────────────────────────────────────────
 
@@ -34,10 +39,18 @@ BATCH_SIZE      = 32         # how many chunks to embed + upload at once
 # ── Init ────────────────────────────────────────────────────────────────────
 
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-qdrant = QdrantClient(host="localhost", port=6333)
 
+# Qdrant Cloud connection — was QdrantClient(host="localhost", port=6333).
+# Cloud requires a full URL + API key rather than host/port, since it's
+# authenticated over HTTPS rather than an unauthenticated local Docker instance.
+qdrant = QdrantClient(
+    url=os.getenv("QDRANT_URL"),
+    api_key=os.getenv("QDRANT_API_KEY"),
+)
 
 # ── Collection Setup ────────────────────────────────────────────────────────
+
+from qdrant_client.models import PayloadSchemaType
 
 def ensure_collection_exists():
     """
@@ -58,7 +71,18 @@ def ensure_collection_exists():
     else:
         print(f"Collection already exists: {COLLECTION_NAME}")
 
-
+    # Qdrant Cloud requires an explicit payload index to filter on a field
+    # (e.g. document_scope filtering by source_file in retriever.py).
+    # Without this, query_points() with a Filter on source_file returns
+    # a 400 error: "Index required but not found for source_file".
+    # create_payload_index is idempotent — safe to call even if it exists.
+    qdrant.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="source_file",
+        field_schema=PayloadSchemaType.KEYWORD,
+    )
+    print("Ensured payload index on 'source_file'")
+    
 # ── Point ID Generation ──────────────────────────────────────────────────────
 
 def chunk_id_to_point_id(chunk_id: str) -> str:
