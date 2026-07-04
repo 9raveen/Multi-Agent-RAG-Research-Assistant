@@ -1,6 +1,6 @@
 // components/EvaluationDashboard.jsx
 import { useEffect, useState } from "react";
-
+import { API_BASE_URL } from "../api";
 const METRIC_LABELS = {
   faithfulness: "Faithfulness",
   answer_relevancy: "Answer Relevancy",
@@ -13,7 +13,7 @@ export default function EvaluationDashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/evaluation/latest") // swap to env var before deploy
+    fetch(`${API_BASE_URL}/evaluation/latest`) // swap to env var before deploy
       .then((res) => {
         if (!res.ok) throw new Error("No evaluation results available yet.");
         return res.json();
