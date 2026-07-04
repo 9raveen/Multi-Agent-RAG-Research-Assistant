@@ -117,11 +117,7 @@ def embed_chunks(chunks: list[dict]) -> list[dict]:
     print(f"Embedding {len(texts)} chunks in batches of {BATCH_SIZE}...")
 
     model = get_embedding_model()  # lazy load — only happens on first real use
-    embeddings = model.encode(
-        texts,
-        batch_size=BATCH_SIZE,
-        show_progress_bar=True
-    )
+    embeddings = list(model.embed(texts))
 
     for chunk, embedding in zip(chunks, embeddings):
         chunk["embedding"] = embedding.tolist()

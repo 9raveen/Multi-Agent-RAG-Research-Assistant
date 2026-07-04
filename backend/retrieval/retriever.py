@@ -32,7 +32,7 @@ def retrieve(query: str, top_k: int = 5, source_file: str | None = None) -> list
     getting answers pulled from an unrelated doc B sitting in the same collection).
     """
     model = get_embedding_model()  # lazy load — reuses the same instance embedder.py loaded
-    query_vector = model.encode(query).tolist()
+    query_vector = list(model.embed([query]))[0].tolist()
 
     query_filter = None
     if source_file:
