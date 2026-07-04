@@ -27,6 +27,7 @@ from qdrant_client.models import (
 import uuid
 import hashlib
 import os
+import gc
 from dotenv import load_dotenv
 from retrieval.embedding_model import get_embedding_model
 
@@ -148,6 +149,8 @@ def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: 
         total_uploaded += len(points)
         print(f"Uploaded batch {i // batch_size + 1}: {len(points)} points")
 
+        del embeddings, points  # explicit release
+        gc.collect()            # force cleanup before next batch
     return total_uploaded
 
 # ── Qdrant Upload ────────────────────────────────────────────────────────────
@@ -198,7 +201,7 @@ def upload_to_qdrant(chunks: list[dict]) -> int:
 
 def embed_and_store(chunks: list[dict]) -> int:
     ensure_collection_exists()
-    count = embed_chunks_and_upload(chunks, qdrant, COLLECTION_NAME, batch_size=8)
+    count = embed_chunks_and_upload(chunks, qdrant, COLLECTION_NAME, batch_size=4)
     return count
 
 
