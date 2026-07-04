@@ -3,7 +3,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from retrieval.embedding_model import get_embedding_model
 from api.routes_query import router as query_router
 from api.routes_upload import router as upload_router
 
@@ -12,6 +12,11 @@ app = FastAPI(
     description="Upload PDFs, ask questions, get cited answers via a LangGraph research/synthesis/critique pipeline.",
     version="0.1.0",
 )
+@app.on_event("startup")
+async def preload_model():
+    print("Pre-loading embedding model at startup...")
+    get_embedding_model()
+    print("Embedding model ready.")
 
 from api.routes_evaluation import router as evaluation_router
 app.include_router(evaluation_router)
