@@ -45,9 +45,9 @@ BENCHMARK = [
         "type": "comparative",
     },
     {
-        "question": "Why might mini-batch gradient descent be preferred over both batch and stochastic gradient descent in practice?",
-        "ground_truth": "Mini-batch gradient descent balances the stability of batch gradient descent with the computational efficiency of stochastic gradient descent, and it also enables vectorized/parallel computation on hardware like GPUs.",
-        "type": "factual_multi_hop",
+        "question": "What does the document say about mini-batch gradient descent being a compromise between batch and stochastic gradient descent?",
+        "ground_truth": "Mini-batch gradient descent is described as a compromise between batch gradient descent and stochastic gradient descent, updating parameters using a small, random subset of the training data at each iteration.",
+        "type": "factual_single_hop",  # reclassified — no longer asking for unstated reasoning
     },
     {
         "question": "How does the choice of learning rate affect convergence in gradient descent?",
