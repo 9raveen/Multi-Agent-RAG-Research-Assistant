@@ -1,6 +1,7 @@
 import { useState } from "react";
 import UploadPanel from "./components/UploadPanel";
 import QueryPanel from "./components/QueryPanel";
+import EvaluationDashboard from "./components/EvaluationDashboard";
 import "./App.css";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
           onUploadSuccess={(filename) => setLastUploadedFile(filename)}
         />
         <QueryPanel documentScope={lastUploadedFile} />
+        <EvaluationDashboard />
       </main>
     </div>
   );

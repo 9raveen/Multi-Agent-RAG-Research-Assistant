@@ -431,3 +431,68 @@ button:disabled {
   color: rgba(255, 255, 255, 0.5);
   font-style: italic;
 }
+
+.eval-dashboard {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eval-dashboard--empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  padding: 16px;
+}
+
+.eval-dashboard h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.eval-dashboard__meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 16px 0;
+}
+
+.eval-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eval-metric {
+  display: grid;
+  grid-template-columns: 140px 1fr 50px;
+  align-items: center;
+  gap: 10px;
+}
+
+.eval-metric__label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.eval-metric__bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.eval-metric__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #22d3ee);
+  border-radius: 3px;
+}
+
+.eval-metric__value {
+  font-size: 12px;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.6);
+}
