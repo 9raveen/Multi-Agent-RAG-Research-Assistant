@@ -107,22 +107,48 @@ def chunk_id_to_point_id(chunk_id: str) -> str:
 
 # ── Embedding ───────────────────────────────────────────────────────────────
 
-def embed_chunks(chunks: list[dict]) -> list[dict]:
+def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: str, batch_size: int = 8) -> int:
     """
-    Add an 'embedding' field to each chunk by embedding its child text.
+    Embed and upload chunks in small batches to avoid holding all chunks'
+    embeddings in memory simultaneously — critical on memory-constrained
+    hosts (Render free tier: 512MB). Large documents (20+ chunks) were
+    causing OOM when the full batch was embedded before any upload happened.
     """
-    texts = [chunk["text"] for chunk in chunks]
+    model = get_embedding_model()
+    total_uploaded = 0
 
-    print(f"Embedding {len(texts)} chunks in batches of {BATCH_SIZE}...")
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i:i + batch_size]
+        texts = [chunk["text"] for chunk in batch]
 
-    model = get_embedding_model()  # lazy load — only happens on first real use
-    embeddings = list(model.embed(texts))
+        embeddings = list(model.embed(texts))  # only this small batch in memory
 
-    for chunk, embedding in zip(chunks, embeddings):
-        chunk["embedding"] = embedding.tolist()
+        points = []
+        for chunk, embedding in zip(batch, embeddings):
+            payload = {
+                "text": chunk["text"],
+                "parent_text": chunk["parent_text"],
+                "page_number": chunk["page_number"],
+                "source_file": chunk["source_file"],
+                "section_header": chunk["section_header"],
+                "chunk_id": chunk["chunk_id"],
+                "parent_chunk_id": chunk["parent_chunk_id"],
+                "chunk_index": chunk["chunk_index"],
+                "chunk_type": chunk["chunk_type"],
+            }
+            points.append(
+                PointStruct(
+                    id=chunk_id_to_point_id(chunk["chunk_id"]),
+                    vector=embedding.tolist(),
+                    payload=payload,
+                )
+            )
 
-    return chunks
+        qdrant_client.upsert(collection_name=collection_name, points=points)
+        total_uploaded += len(points)
+        print(f"Uploaded batch {i // batch_size + 1}: {len(points)} points")
 
+    return total_uploaded
 
 # ── Qdrant Upload ────────────────────────────────────────────────────────────
 
@@ -171,12 +197,8 @@ def upload_to_qdrant(chunks: list[dict]) -> int:
 # ── Main Pipeline Function ───────────────────────────────────────────────────
 
 def embed_and_store(chunks: list[dict]) -> int:
-    """
-    Full pipeline: ensure collection → embed → upload.
-    """
     ensure_collection_exists()
-    chunks_with_embeddings = embed_chunks(chunks)
-    count = upload_to_qdrant(chunks_with_embeddings)
+    count = embed_chunks_and_upload(chunks, qdrant, COLLECTION_NAME, batch_size=8)
     return count
 
 
