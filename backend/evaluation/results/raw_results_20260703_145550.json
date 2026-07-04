@@ -1,0 +1,152 @@
+[
+  {
+    "question": "What is gradient descent?",
+    "answer": "Gradient descent is a fundamental optimization algorithm in machine learning, used to minimize functions by iteratively moving towards the minimum (page 2). It can be described as walking down a hill by looking around to find the steepest downward direction, taking a small step in that direction, and repeating until you reach the bottom (minimum) (page 4). In essence, it involves making small adjustments to reach the optimal point (page 7).",
+    "contexts": [
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors.",
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "example\n1.\nCore Idea Gradient descent is like walking down a hill by:\n●\nLooking around to find the steepest downward direction (gradient)\n●\nTaking a small step in that direction\n●\nRepeating until you reach the bottom (minimum)",
+      "Stochastic Gradient Descent\nStochastic Gradient Descent (SGD) is a variant of the gradient descent algorithm \nwhere the model parameters are updated using the gradient of the loss function \nwith respect to a single training example at each iteration. Unlike batch gradient \ndescent, which uses the entire dataset, SGD updates the parameters more \nfrequently, leading to faster convergence.",
+      "Example 2\n2. Real-World Example Imagine you're adjusting the temperature of your shower:\n●\nToo hot? Turn the knob left\n●\nToo cold? Turn it right\n●\nYou keep making small adjustments until it's perfect\n●\nThis is exactly like gradient descent - making small adjustments to reach the optimal \npoint"
+    ],
+    "ground_truth": "Gradient descent is a fundamental optimization algorithm in machine learning used to minimize a function by iteratively moving towards the minimum, in the direction of steepest descent.",
+    "_critique_passed": true,
+    "_revisions_taken": 1,
+    "_rate_limited": false
+  },
+  {
+    "question": "What is batch gradient descent?",
+    "answer": "Batch Gradient Descent is a variant of the gradient descent algorithm where the entire dataset is used to compute the gradient of the loss function with respect to the parameters. In each iteration, the algorithm calculates the average gradient of the loss function for all the training examples and updates the model parameters accordingly (page 12). The update rule for batch gradient descent is: Θ = θ−η∇J(θ), where θ represents the parameters of the model, η is the learning rate, and ∇J(θ) is the gradient of the loss function J(θ) with respect to θ (page 13).",
+    "contexts": [
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "Mini-Batch Gradient Descent\nMini-Batch Gradient Descent is a compromise between Batch Gradient \nDescent and Stochastic Gradient Descent. Instead of using the entire dataset \nor a single training example, Mini-Batch Gradient Descent updates the model \nparameters using a small, random subset of the training data called a \nmini-batch. The update rule for Mini-Batch Gradient Descent is:",
+      "The update rule for Mini-Batch Gradient Descent is:\nθ = θ−η∇J (θ;{x(i),y(i)} ^m i=1)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n{x(i),y(i)}^m i=1 represents a mini-batch of m training examples,\n●\n∇J(θ;{x(i),y(i)} ^m i=1) is the gradient of the loss function J(θ) with respect to θ for \nthe mini-batch.",
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors.",
+      "The update rule for batch gradient descent is:\nΘ = θ−η∇J(θ)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n∇J(θ) is the gradient of the loss function J(θ) with respect to θ."
+    ],
+    "ground_truth": "Batch gradient descent is a variant of gradient descent where the entire dataset is used to compute the gradient of the loss function with respect to the parameters in each iteration.",
+    "_critique_passed": true,
+    "_revisions_taken": 1,
+    "_rate_limited": false
+  },
+  {
+    "question": "What is stochastic gradient descent?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "Stochastic Gradient Descent\nStochastic Gradient Descent (SGD) is a variant of the gradient descent algorithm \nwhere the model parameters are updated using the gradient of the loss function \nwith respect to a single training example at each iteration. Unlike batch gradient \ndescent, which uses the entire dataset, SGD updates the parameters more \nfrequently, leading to faster convergence.",
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors.",
+      "Mini-Batch Gradient Descent\nMini-Batch Gradient Descent is a compromise between Batch Gradient \nDescent and Stochastic Gradient Descent. Instead of using the entire dataset \nor a single training example, Mini-Batch Gradient Descent updates the model \nparameters using a small, random subset of the training data called a \nmini-batch. The update rule for Mini-Batch Gradient Descent is:",
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "Example 2\n2. Real-World Example Imagine you're adjusting the temperature of your shower:\n●\nToo hot? Turn the knob left\n●\nToo cold? Turn it right\n●\nYou keep making small adjustments until it's perfect\n●\nThis is exactly like gradient descent - making small adjustments to reach the optimal \npoint"
+    ],
+    "ground_truth": "Stochastic gradient descent (SGD) is a variant of gradient descent where the model parameters are updated using the gradient of the loss function with respect to a single training example at each iteration.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "What is mini-batch gradient descent?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "Mini-Batch Gradient Descent\nMini-Batch Gradient Descent is a compromise between Batch Gradient \nDescent and Stochastic Gradient Descent. Instead of using the entire dataset \nor a single training example, Mini-Batch Gradient Descent updates the model \nparameters using a small, random subset of the training data called a \nmini-batch. The update rule for Mini-Batch Gradient Descent is:",
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors.",
+      "The update rule for Mini-Batch Gradient Descent is:\nθ = θ−η∇J (θ;{x(i),y(i)} ^m i=1)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n{x(i),y(i)}^m i=1 represents a mini-batch of m training examples,\n●\n∇J(θ;{x(i),y(i)} ^m i=1) is the gradient of the loss function J(θ) with respect to θ for \nthe mini-batch.",
+      "Stochastic Gradient Descent\nStochastic Gradient Descent (SGD) is a variant of the gradient descent algorithm \nwhere the model parameters are updated using the gradient of the loss function \nwith respect to a single training example at each iteration. Unlike batch gradient \ndescent, which uses the entire dataset, SGD updates the parameters more \nfrequently, leading to faster convergence."
+    ],
+    "ground_truth": "Mini-batch gradient descent is a compromise between batch and stochastic gradient descent, updating parameters using a small, random subset (mini-batch) of the training data at each iteration.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "What is the update rule for batch gradient descent?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "The update rule for batch gradient descent is:\nΘ = θ−η∇J(θ)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n∇J(θ) is the gradient of the loss function J(θ) with respect to θ.",
+      "The update rule for Mini-Batch Gradient Descent is:\nθ = θ−η∇J (θ;{x(i),y(i)} ^m i=1)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n{x(i),y(i)}^m i=1 represents a mini-batch of m training examples,\n●\n∇J(θ;{x(i),y(i)} ^m i=1) is the gradient of the loss function J(θ) with respect to θ for \nthe mini-batch.",
+      "Mini-Batch Gradient Descent\nMini-Batch Gradient Descent is a compromise between Batch Gradient \nDescent and Stochastic Gradient Descent. Instead of using the entire dataset \nor a single training example, Mini-Batch Gradient Descent updates the model \nparameters using a small, random subset of the training data called a \nmini-batch. The update rule for Mini-Batch Gradient Descent is:",
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "The update rule for SGD is:\nθ=θ−η∇J( θ; x(i), y(i) )\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n∇J(θ;x(i),y(i)) is the gradient of the loss function J(θ) with respect to θ for the i-th \ntraining example (x(i),y(i))."
+    ],
+    "ground_truth": "The update rule is theta = theta - eta * gradient(J(theta)), where theta is the model parameters, eta is the learning rate, and gradient(J(theta)) is the gradient of the loss function with respect to theta.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "What is the main tradeoff between batch gradient descent and stochastic gradient descent?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "Mini-Batch Gradient Descent\nMini-Batch Gradient Descent is a compromise between Batch Gradient \nDescent and Stochastic Gradient Descent. Instead of using the entire dataset \nor a single training example, Mini-Batch Gradient Descent updates the model \nparameters using a small, random subset of the training data called a \nmini-batch. The update rule for Mini-Batch Gradient Descent is:",
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "Stochastic Gradient Descent\nStochastic Gradient Descent (SGD) is a variant of the gradient descent algorithm \nwhere the model parameters are updated using the gradient of the loss function \nwith respect to a single training example at each iteration. Unlike batch gradient \ndescent, which uses the entire dataset, SGD updates the parameters more \nfrequently, leading to faster convergence.",
+      "The update rule for Mini-Batch Gradient Descent is:\nθ = θ−η∇J (θ;{x(i),y(i)} ^m i=1)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n{x(i),y(i)}^m i=1 represents a mini-batch of m training examples,\n●\n∇J(θ;{x(i),y(i)} ^m i=1) is the gradient of the loss function J(θ) with respect to θ for \nthe mini-batch.",
+      "The update rule for batch gradient descent is:\nΘ = θ−η∇J(θ)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n∇J(θ) is the gradient of the loss function J(θ) with respect to θ."
+    ],
+    "ground_truth": "Batch gradient descent gives stable, accurate gradient estimates but is computationally expensive per step since it uses the whole dataset, while stochastic gradient descent is much faster per update but noisier and less stable since it uses only one example at a time.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "Why might mini-batch gradient descent be preferred over both batch and stochastic gradient descent in practice?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "Mini-Batch Gradient Descent\nMini-Batch Gradient Descent is a compromise between Batch Gradient \nDescent and Stochastic Gradient Descent. Instead of using the entire dataset \nor a single training example, Mini-Batch Gradient Descent updates the model \nparameters using a small, random subset of the training data called a \nmini-batch. The update rule for Mini-Batch Gradient Descent is:",
+      "Batch Gradient Descent\nBatch Gradient Descent is a variant of the gradient descent algorithm where the \nentire dataset is used to compute the gradient of the loss function with respect to \nthe parameters. In each iteration, the algorithm calculates the average gradient of \nthe loss function for all the training examples and updates the model parameters \naccordingly.",
+      "The update rule for Mini-Batch Gradient Descent is:\nθ = θ−η∇J (θ;{x(i),y(i)} ^m i=1)\nwhere:\n●\nθ represents the parameters of the model,\n●\nη is the learning rate,\n●\n{x(i),y(i)}^m i=1 represents a mini-batch of m training examples,\n●\n∇J(θ;{x(i),y(i)} ^m i=1) is the gradient of the loss function J(θ) with respect to θ for \nthe mini-batch.",
+      "Stochastic Gradient Descent\nStochastic Gradient Descent (SGD) is a variant of the gradient descent algorithm \nwhere the model parameters are updated using the gradient of the loss function \nwith respect to a single training example at each iteration. Unlike batch gradient \ndescent, which uses the entire dataset, SGD updates the parameters more \nfrequently, leading to faster convergence.",
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors."
+    ],
+    "ground_truth": "Mini-batch gradient descent balances the stability of batch gradient descent with the computational efficiency of stochastic gradient descent, and it also enables vectorized/parallel computation on hardware like GPUs.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "How does the choice of learning rate affect convergence in gradient descent?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "1. AdaGrad (Adaptive Gradient) – \"The Accumulator\"\nImagine you're walking down a hill. Every time you take a big step in one direction, you \nremember it and become more careful there next time (smaller steps). For directions you \nrarely step in, you keep taking bigger steps.\nAdaGrad keeps a running sum of all past squared gradients for each parameter. \n→ Parameters with lots of big updates get their learning rate shrunk a lot (good for sparse \nfeatures like words in text). \n→ Rarely updated parameters keep larger effective learning rates.\nPros: Great for sparse data (e.g. recommendation systems, NLP with rare words) \nBig problem: The sum keeps growing forever → effective learning rate shrinks to almost \nzero → training can stop way too early (\"AdaGrad's dying learning rate\").",
+      "2. RMSProp (Root Mean Square Propagation) – \"The Moving \nMemory Fix\"\n●\nInstead of adding up ALL past squared gradients forever (like AdaGrad), we \nuse a moving average — only remember recent gradients more strongly. It's \nlike having short-term memory instead of lifetime memory. \n→ The learning rate still adapts per parameter, but it doesn't shrink to zero over \nlong training.\n●\nWhy it's important: Much better than AdaGrad for deep nets. It keeps learning \ngoing longer while still adapting step sizes.",
+      "Adaptive methods automatically make the learning rate smaller for parameters with \nbig gradients and larger for parameters with small gradients. Each parameter gets its \nown personalized step size that changes over time.\nThis helps a lot on tricky loss surfaces (ravines, plateaus, sparse data).",
+      "Adaptive Learning Rate Methods – Smart Steps for Tough Hills\nNormal gradient descent uses the same step size (learning rate η) for every \nparameter — like giving every hiker the same shoe size. But parameters are very \ndifferent:\n●\nSome change a lot (big gradients) → need small steps to avoid overshooting\n●\nSome barely change (tiny or sparse gradients) → need bigger steps to make \nprogress",
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors."
+    ],
+    "ground_truth": "A learning rate that is too high can cause the algorithm to overshoot the minimum or diverge, while a learning rate that is too low results in slow convergence, requiring many more iterations to reach the minimum.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "What is the capital of France?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "●\nGetting stuck in local minima or saddle points\nLocal minimum: a small dip that's not the deepest point overall. GD can fall in \nand think \"I'm done!\" → bad solution.\nSaddle point: looks like a minimum (gradient ≈ 0), but it's actually a pass — one \ndirection goes up, another goes down. Very common in high dimensions! → \nBasic GD can slow down or stop completely here.",
+      "3.Adam (Adaptive Moment Estimation) – The Modern \nChampion\nCombines:\n●\nMomentum (First moment)\n●\nRMSProp (Second moment)\nIt adapts both direction and magnitude.\nThat’s why it dominates modern deep learning.",
+      "●\nVery sensitive to learning rate (η)\nToo big → you overshoot the minimum and bounce around (or even run away → \ndivergence).\nToo small → tiny steps → takes forever to reach the bottom. → You spend a lot of \ntime tuning η by trial and error.",
+      "Example 2\n2. Real-World Example Imagine you're adjusting the temperature of your shower:\n●\nToo hot? Turn the knob left\n●\nToo cold? Turn it right\n●\nYou keep making small adjustments until it's perfect\n●\nThis is exactly like gradient descent - making small adjustments to reach the optimal \npoint",
+      "Neural networks are trained using Gradient Descent (or its variants) in \ncombination with backpropagation. Backpropagation computes the gradients of \nthe loss function with respect to each parameter (weights and biases) in the \nnetwork by applying the chain rule."
+    ],
+    "ground_truth": "This document does not contain information about geography or world capitals; it covers gradient descent and its variants.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  },
+  {
+    "question": "What model architecture does this document recommend for image classification?",
+    "answer": "SYNTHESIS FAILED — Groq rate limit reached before answer could be generated.",
+    "contexts": [
+      "1. AdaGrad (Adaptive Gradient) – \"The Accumulator\"\nImagine you're walking down a hill. Every time you take a big step in one direction, you \nremember it and become more careful there next time (smaller steps). For directions you \nrarely step in, you keep taking bigger steps.\nAdaGrad keeps a running sum of all past squared gradients for each parameter. \n→ Parameters with lots of big updates get their learning rate shrunk a lot (good for sparse \nfeatures like words in text). \n→ Rarely updated parameters keep larger effective learning rates.\nPros: Great for sparse data (e.g. recommendation systems, NLP with rare words) \nBig problem: The sum keeps growing forever → effective learning rate shrinks to almost \nzero → training can stop way too early (\"AdaGrad's dying learning rate\").",
+      "3.Adam (Adaptive Moment Estimation) – The Modern \nChampion\nCombines:\n●\nMomentum (First moment)\n●\nRMSProp (Second moment)\nIt adapts both direction and magnitude.\nThat’s why it dominates modern deep learning.",
+      "Gradient descent is a fundamental optimization algorithm in machine \nlearning, used to minimize functions by iteratively moving towards the \nminimum. It's crucial for training models by fine-tuning parameters to reduce \nprediction errors.",
+      "Adaptive methods automatically make the learning rate smaller for parameters with \nbig gradients and larger for parameters with small gradients. Each parameter gets its \nown personalized step size that changes over time.\nThis helps a lot on tricky loss surfaces (ravines, plateaus, sparse data).",
+      "4. AdamW (Improved Adam)\nAdamW is a corrected version of Adam where weight decay is decoupled from \nthe gradient update.\nThis small mathematical correction leads to better generalization and more \nstable training, especially in large deep models.\nIt Separates weight decay from gradient update.\nBetter generalization.\nUsed in:\n●\nTransformers\n●\nDiffusion models\n●\nVision models"
+    ],
+    "ground_truth": "This document does not discuss image classification or specific model architectures; it focuses on gradient descent optimization algorithms.",
+    "_critique_passed": false,
+    "_revisions_taken": 1,
+    "_rate_limited": true
+  }
+]
