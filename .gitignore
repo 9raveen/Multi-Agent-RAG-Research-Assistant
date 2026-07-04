@@ -12,6 +12,7 @@
 # ======================
 venv/
 env/
+test_env/
 .venv/
 __pycache__/
 *.py[cod]
