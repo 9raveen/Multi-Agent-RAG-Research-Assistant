@@ -35,3 +35,8 @@ class UploadResponse(BaseModel):
     chunks_created: int
     tables_detected: int
     vectors_stored: int
+
+class EvaluationResponse(BaseModel):
+    scores: dict[str, float]
+    question_count: int | None
+    timestamp: str

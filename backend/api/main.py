@@ -13,6 +13,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
+from api.routes_evaluation import router as evaluation_router
+app.include_router(evaluation_router)
 # CORS: allows the React frontend (Phase 4, likely running on localhost:3000
 # or similar during dev) to call this API from the browser. Wide open for
 # now — tighten to specific origins before actual deployment.
