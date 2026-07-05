@@ -22,11 +22,15 @@ export async function uploadPdf(file) {
   return response.json();
 }
 
-export async function askQuery(query, documentScope = null) {
+export async function askQuery(query, documentScope = null, chatHistory = []) {
   const response = await fetch(`${API_BASE_URL}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, document_scope: documentScope }),
+    body: JSON.stringify({
+      query,
+      document_scope: documentScope,
+      chat_history: chatHistory, // NEW
+    }),
   });
 
   if (!response.ok) {

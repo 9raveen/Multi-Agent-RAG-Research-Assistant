@@ -17,12 +17,22 @@ export default function ChatPanel({ documentScope }) {
     if (!input.trim() || loading) return;
 
     const userText = input;
-    setMessages((prev) => [...prev, { role: "user", content: userText }]);
     setInput("");
     setLoading(true);
 
+    // Build chat history from messages BEFORE this turn — this is what
+    // rewrite_query_node uses to resolve follow-up references ("what about
+    // SGD instead?"). For assistant turns, use the actual answer text, not
+    // the whole result object.
+    const chatHistory = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.role === "user" ? msg.content : msg.result?.answer || "",
+    }));
+
+    setMessages((prev) => [...prev, { role: "user", content: userText }]);
+
     try {
-      const result = await askQuery(userText, documentScope);
+      const result = await askQuery(userText, documentScope, chatHistory);
       setMessages((prev) => [...prev, { role: "assistant", result }]);
     } catch (err) {
       setMessages((prev) => [
