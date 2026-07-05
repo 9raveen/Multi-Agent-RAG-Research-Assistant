@@ -2,12 +2,14 @@
 # Wires the three agent nodes into a LangGraph pipeline with a conditional
 # retry loop: research -> synthesis -> critique -> (done | retry | give_up)
 
+# graph.py
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from langgraph.graph import StateGraph, START, END
 
 from agents.state import ResearchState
+from agents.query_rewrite_agent import rewrite_query_node  # NEW
 from agents.research_agent import research_node
 from agents.synthesis_agent import synthesis_node
 from agents.critique_agent import critique_node
@@ -22,9 +24,6 @@ def route_after_critique(state: ResearchState) -> str:
         return "done"
     if state["revision_count"] >= MAX_REVISIONS:
         return "give_up"
-    # NEW: if research/synthesis produced the exact same answer as last attempt,
-    # retrying again won't change the substance — only critique's non-deterministic
-    # verdict changes. Stop here instead of burning another full cycle on noise.
     if state["synthesis_output"] == state.get("previous_answer", ""):
         return "give_up"
     return "retry"
@@ -33,11 +32,13 @@ def route_after_critique(state: ResearchState) -> str:
 def build_graph():
     builder = StateGraph(ResearchState)
 
+    builder.add_node("rewrite_query_node", rewrite_query_node)  # NEW
     builder.add_node("research_node", research_node)
     builder.add_node("synthesis_node", synthesis_node)
     builder.add_node("critique_node", critique_node)
 
-    builder.add_edge(START, "research_node")
+    builder.add_edge(START, "rewrite_query_node")               # NEW — was: START -> research_node
+    builder.add_edge("rewrite_query_node", "research_node")     # NEW
     builder.add_edge("research_node", "synthesis_node")
     builder.add_edge("synthesis_node", "critique_node")
 
@@ -46,7 +47,7 @@ def build_graph():
         route_after_critique,
         {
             "done": END,
-            "retry": "research_node",
+            "retry": "research_node",   # retry loop still skips rewrite — no need to re-rewrite on retry
             "give_up": END,
         },
     )

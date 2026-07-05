@@ -23,6 +23,8 @@ def run_query(request: QueryRequest):
 
     initial_state = {
         "query": request.query,
+        "rewritten_query": "",                                    # NEW
+        "chat_history": [t.dict() for t in request.chat_history],  # NEW
         "document_scope": request.document_scope,
         "retrieved_chunks": [],
         "synthesis_output": "",
@@ -34,21 +36,25 @@ def run_query(request: QueryRequest):
     }
 
     trace = []
-    cumulative_state = dict(initial_state)  # running full-state snapshot
+    cumulative_state = dict(initial_state)
     final_state = None
 
     try:
         for step_output in graph.stream(initial_state):
             for node_name, node_state in step_output.items():
-                cumulative_state.update(node_state)  # merge partial → running state
-                trace.append({
-                    "node": node_name,
-                    "revision": cumulative_state.get("revision_count", 0),
-                    "rate_limited": cumulative_state.get("rate_limited", False),
-                    "critique_passed": cumulative_state.get("critique_passed"),
-                    "critique_feedback": cumulative_state.get("critique_feedback"),
-                    "chunks_retrieved": len(cumulative_state.get("retrieved_chunks", [])),
-                })
+                cumulative_state.update(node_state)
+                # Only log trace entries for the 3 main pipeline nodes —
+                # rewrite_query_node is a pre-processing step, not part of
+                # the visible agent trace panel's story.
+                if node_name != "rewrite_query_node":
+                    trace.append({
+                        "node": node_name,
+                        "revision": cumulative_state.get("revision_count", 0),
+                        "rate_limited": cumulative_state.get("rate_limited", False),
+                        "critique_passed": cumulative_state.get("critique_passed"),
+                        "critique_feedback": cumulative_state.get("critique_feedback"),
+                        "chunks_retrieved": len(cumulative_state.get("retrieved_chunks", [])),
+                    })
                 final_state = cumulative_state
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline execution failed: {str(e)}")
@@ -74,7 +80,6 @@ def run_query(request: QueryRequest):
         sources=sources,
         trace=trace,
     )
-
         # .stream() instead of .invoke() — captures each node's output as it
         # fires, including every retry attempt, not just the final result.
         # Needed for the agent trace panel; .invoke() collapses intermediate

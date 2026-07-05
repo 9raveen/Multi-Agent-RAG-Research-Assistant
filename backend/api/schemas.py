@@ -5,9 +5,14 @@
 from pydantic import BaseModel
 
 
+class ChatTurnSchema(BaseModel):
+    role: str
+    content: str
+
 class QueryRequest(BaseModel):
     query: str
     document_scope: str | None = None
+    chat_history: list[ChatTurnSchema] = [] 
 
 
 class TraceStep(BaseModel):

@@ -3,9 +3,14 @@
 
 from typing import TypedDict
 
+class ChatTurn(TypedDict):
+    role: str      # "user" | "assistant"
+    content: str
 
 class ResearchState(TypedDict):
     query: str                          # the user's question
+    rewritten_query: str          # NEW — standalone version of query, used for retrieval
+    chat_history: list[ChatTurn]  # NEW — prior turns, capped to last N by the caller
     document_scope: str | None      # ← new: which document to restrict search to
     retrieved_chunks: list[dict]        # raw retrieval hits (text + table, with metadata)
     synthesis_output: str               # LLM-generated answer
