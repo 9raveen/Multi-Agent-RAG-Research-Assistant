@@ -1,6 +1,6 @@
 import { useState } from "react";
 import UploadPanel from "./components/UploadPanel";
-import QueryPanel from "./components/QueryPanel";
+import ChatPanel from "./components/ChatPanel"; // was: QueryPanel
 import EvaluationDashboard from "./components/EvaluationDashboard";
 import "./App.css";
 
@@ -17,7 +17,7 @@ export default function App() {
         <UploadPanel
           onUploadSuccess={(filename) => setLastUploadedFile(filename)}
         />
-        <QueryPanel documentScope={lastUploadedFile} />
+        <ChatPanel documentScope={lastUploadedFile} /> {/* was: QueryPanel */}
         <EvaluationDashboard />
       </main>
     </div>
