@@ -1,6 +1,5 @@
-// components/ChatPanel.jsx
 import { useState, useRef, useEffect } from "react";
-import { askQuery } from "../api";
+import { askQueryStream } from "../api";
 import AnswerCard from "./AnswerCard";
 
 export default function ChatPanel({ documentScope }) {
@@ -13,6 +12,14 @@ export default function ChatPanel({ documentScope }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const updateLastMessage = (updater) => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      updated[updated.length - 1] = updater(updated[updated.length - 1]);
+      return updated;
+    });
+  };
+
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
@@ -20,26 +27,46 @@ export default function ChatPanel({ documentScope }) {
     setInput("");
     setLoading(true);
 
-    // Build chat history from messages BEFORE this turn — this is what
-    // rewrite_query_node uses to resolve follow-up references ("what about
-    // SGD instead?"). For assistant turns, use the actual answer text, not
-    // the whole result object.
     const chatHistory = messages.map((msg) => ({
       role: msg.role,
       content: msg.role === "user" ? msg.content : msg.result?.answer || "",
     }));
 
-    setMessages((prev) => [...prev, { role: "user", content: userText }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: userText },
+      { role: "assistant", streaming: true, answerText: "" },
+    ]);
 
     try {
-      const result = await askQuery(userText, documentScope, chatHistory);
-      setMessages((prev) => [...prev, { role: "assistant", result }]);
+      await askQueryStream(userText, documentScope, chatHistory, {
+        onToken: (text) => {
+          updateLastMessage((msg) => ({
+            ...msg,
+            answerText: (msg.answerText || "") + text,
+            retrying: false,
+          }));
+        },
+        onRetry: (revision) => {
+          updateLastMessage(() => ({
+            role: "assistant",
+            streaming: true,
+            answerText: "",
+            retrying: true,
+            revision,
+          }));
+        },
+        onDone: (result) => {
+          updateLastMessage(() => ({ role: "assistant", result }));
+          setLoading(false);
+        },
+        onError: (message) => {
+          updateLastMessage(() => ({ role: "assistant", error: message }));
+          setLoading(false);
+        },
+      });
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", error: err.message },
-      ]);
-    } finally {
+      updateLastMessage(() => ({ role: "assistant", error: err.message }));
       setLoading(false);
     }
   };
@@ -75,13 +102,19 @@ export default function ChatPanel({ documentScope }) {
             <div key={i} className="chat-bubble chat-bubble--error">
               Error: {msg.error}
             </div>
+          ) : msg.streaming ? (
+            <div key={i} className="chat-bubble chat-bubble--streaming">
+              {msg.retrying && (
+                <p className="chat-retry-note">
+                  Revising answer (attempt {msg.revision})...
+                </p>
+              )}
+              {msg.answerText}
+              <span className="streaming-cursor">▍</span>
+            </div>
           ) : (
             <AnswerCard key={i} result={msg.result} />
           ),
-        )}
-
-        {loading && (
-          <div className="chat-bubble chat-bubble--loading">Thinking...</div>
         )}
 
         <div ref={bottomRef} />

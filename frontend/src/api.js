@@ -33,6 +33,62 @@ export async function askQuery(query, documentScope = null, chatHistory = []) {
     }),
   });
 
+  // ADD this function — keep askQuery() as-is, it's still used elsewhere (e.g. /docs testing parity)
+
+  export async function askQueryStream(
+    query,
+    documentScope,
+    chatHistory,
+    callbacks,
+  ) {
+    const { onToken, onRetry, onDone, onError } = callbacks;
+
+    const response = await fetch(`${API_BASE_URL}/query/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        document_scope: documentScope,
+        chat_history: chatHistory,
+      }),
+    });
+
+    if (!response.ok || !response.body) {
+      const errorBody = await response.json().catch(() => ({}));
+      onError(errorBody.detail || `Query failed (${response.status})`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop(); // last chunk may be incomplete — keep it for next read
+
+      for (const rawEvent of events) {
+        let eventType = "message";
+        let data = "";
+        for (const line of rawEvent.split("\n")) {
+          if (line.startsWith("event: ")) eventType = line.slice(7);
+          if (line.startsWith("data: ")) data = line.slice(6);
+        }
+        if (!data) continue;
+        const parsed = JSON.parse(data);
+
+        if (eventType === "token") onToken(parsed.text);
+        else if (eventType === "retry") onRetry(parsed.revision);
+        else if (eventType === "error") onError(parsed.message);
+        else if (eventType === "done") onDone(parsed);
+      }
+    }
+  }
+
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
     throw new Error(errorBody.detail || `Query failed (${response.status})`);
