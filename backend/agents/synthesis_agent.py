@@ -61,3 +61,37 @@ Answer using only the context above."""
         "rate_limited": rate_limited,
         "previous_answer": state.get("synthesis_output", ""),  # captures OLD answer, BEFORE this call
     }
+
+
+def synthesize_stream(query: str, chunks: list[dict]):
+    """
+    Generator version of synthesis — yields text deltas as they arrive from
+    Groq, for the SSE streaming endpoint. Does NOT touch graph state directly;
+    the caller accumulates the full text and updates state itself.
+
+    Raises RateLimitError up to the caller (does not catch it here) so the
+    caller can decide how to represent that in the stream.
+    """
+    context = format_chunks_for_prompt(chunks)
+    user_prompt = f"""Context:
+{context}
+
+Question: {query}
+
+Answer using only the context above."""
+
+    stream = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.2,
+        max_tokens=500,
+        stream=True,  # KEY CHANGE — enables token-level streaming from Groq
+    )
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
