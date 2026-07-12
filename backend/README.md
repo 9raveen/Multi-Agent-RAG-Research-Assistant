@@ -6,5 +6,3 @@ colorTo: blue
 sdk: docker
 app_port: 7860
 ---
-
-# Multi-Agent RAG Research Assistant — Backend API
