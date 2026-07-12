@@ -102,3 +102,4 @@ class ConversationDetail(BaseModel):
     document_id: str | None
     created_at: str
     messages: list[MessageOut]
+
