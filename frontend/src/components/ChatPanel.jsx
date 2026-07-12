@@ -26,6 +26,7 @@ export default function ChatPanel({
   documentScope,
   conversationId,
   initialMessages,
+  loadKey,
   onConversationIdChange,
   onMessageSent,
 }) {
@@ -36,12 +37,21 @@ export default function ChatPanel({
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
 
-  // Reset the visible chat whenever a DIFFERENT conversation is selected
-  // (sidebar click) or cleared (New Chat) — initialMessages/conversationId
-  // change together from the parent, so this re-syncs local state to match.
+  // Reset the visible chat only when the PARENT explicitly loads a
+  // different conversation (sidebar click) or starts a new one — signaled
+  // by loadKey changing, which App.jsx bumps only in those two cases.
+  //
+  // Deliberately NOT keyed on conversationId: when this component sends the
+  // first message of a brand-new chat, it reports the freshly-created
+  // conversation_id back up via onConversationIdChange, which flows back
+  // down as a new conversationId prop. If this effect also fired on that
+  // change, it would wipe the answer that was just rendered, immediately
+  // after receiving it — exactly the "answer appears then chat resets"
+  // symptom this fixes.
   useEffect(() => {
     setMessages((initialMessages || []).map(dbMessageToLocal));
-  }, [conversationId, initialMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

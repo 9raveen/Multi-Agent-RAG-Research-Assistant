@@ -14,6 +14,9 @@ export default function App() {
   const [lastUploadedFile, setLastUploadedFile] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [initialMessages, setInitialMessages] = useState([]);
+  const [loadKey, setLoadKey] = useState(0); // bumped only on explicit sidebar-select / new-chat,
+  // NOT when ChatPanel reports a freshly-assigned
+  // conversation_id back up (see ChatPanel.jsx)
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [loadingConversation, setLoadingConversation] = useState(false);
 
@@ -23,6 +26,7 @@ export default function App() {
       const data = await getConversation(id);
       setConversationId(data.id);
       setInitialMessages(data.messages);
+      setLoadKey((k) => k + 1);
     } catch (err) {
       // Conversation might belong to another session, or simply no longer
       // exist — fall back to a clean new-chat state rather than leaving the
@@ -30,6 +34,7 @@ export default function App() {
       console.error("Failed to load conversation:", err.message);
       setConversationId(null);
       setInitialMessages([]);
+      setLoadKey((k) => k + 1);
     } finally {
       setLoadingConversation(false);
     }
@@ -38,6 +43,7 @@ export default function App() {
   const handleNewChat = useCallback(() => {
     setConversationId(null);
     setInitialMessages([]);
+    setLoadKey((k) => k + 1);
   }, []);
 
   const handleConversationIdChange = useCallback((newId) => {
@@ -96,6 +102,7 @@ export default function App() {
               documentScope={lastUploadedFile}
               conversationId={conversationId}
               initialMessages={initialMessages}
+              loadKey={loadKey}
               onConversationIdChange={handleConversationIdChange}
               onMessageSent={handleMessageSent}
             />
