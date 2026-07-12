@@ -24,21 +24,29 @@ qdrant = QdrantClient(
 )
 
 
-def retrieve(query: str, top_k: int = 5, source_file: str | None = None) -> list[dict]:
+def retrieve(query: str, top_k: int = 5, source_file: str | None = None, user_id: str | None = None) -> list[dict]:
     """
     Embed the query and search Qdrant for the top_k most similar chunks.
     If source_file is given, restricts search to only chunks from that document
     — prevents cross-document contamination (e.g. asking about doc A and
     getting answers pulled from an unrelated doc B sitting in the same collection).
+
+    If user_id is given, ALSO restricts search to only that user's own points
+    (Phase 8) — prevents User A's queries from ever retrieving User B's
+    uploaded documents, even if they happened to name a file the same thing.
+    This is AND'd with source_file, not a replacement for it: both conditions
+    must hold for a point to match.
     """
     model = get_embedding_model()  # lazy load — reuses the same instance embedder.py loaded
     query_vector = list(model.embed([query]))[0].tolist()
 
-    query_filter = None
+    conditions = []
     if source_file:
-        query_filter = Filter(
-            must=[FieldCondition(key="source_file", match=MatchValue(value=source_file))]
-        )
+        conditions.append(FieldCondition(key="source_file", match=MatchValue(value=source_file)))
+    if user_id:
+        conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
+
+    query_filter = Filter(must=conditions) if conditions else None
 
     response = qdrant.query_points(
         collection_name=COLLECTION_NAME,

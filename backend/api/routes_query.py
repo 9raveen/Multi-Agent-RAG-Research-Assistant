@@ -5,7 +5,7 @@
 import sys, os, json
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from groq import RateLimitError
 
@@ -15,6 +15,8 @@ from agents.query_rewrite_agent import rewrite_query_node
 from agents.research_agent import research_node
 from agents.synthesis_agent import synthesize_stream
 from agents.critique_agent import critique_node
+from auth.dependencies import get_current_user
+from db.models import User
 
 router = APIRouter()
 
@@ -24,7 +26,7 @@ graph = build_graph()
 
 
 @router.post("/query", response_model=QueryResponse)
-def run_query(request: QueryRequest):
+def run_query(request: QueryRequest, user: User = Depends(get_current_user)):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
@@ -33,6 +35,7 @@ def run_query(request: QueryRequest):
         "rewritten_query": "",
         "chat_history": [t.dict() for t in request.chat_history],
         "document_scope": request.document_scope,
+        "user_id": str(user.id),
         "retrieved_chunks": [],
         "synthesis_output": "",
         "critique_passed": False,
@@ -87,7 +90,7 @@ def _sse_event(event_type: str, data: dict) -> str:
 
 
 @router.post("/query/stream")
-def run_query_stream(request: QueryRequest):
+def run_query_stream(request: QueryRequest, user: User = Depends(get_current_user)):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
@@ -97,6 +100,7 @@ def run_query_stream(request: QueryRequest):
             "rewritten_query": "",
             "chat_history": [t.dict() for t in request.chat_history],
             "document_scope": request.document_scope,
+            "user_id": str(user.id),
             "retrieved_chunks": [],
             "synthesis_output": "",
             "critique_passed": False,

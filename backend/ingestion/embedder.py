@@ -84,6 +84,16 @@ def ensure_collection_exists():
     )
     print("Ensured payload index on 'source_file'")
 
+    # Phase 8: same requirement for user_id — retriever.py now filters on it
+    # too (see retriever.py's retrieve()), so it needs its own index or that
+    # filter will 400 the same way source_file did before this index existed.
+    qdrant.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="user_id",
+        field_schema=PayloadSchemaType.KEYWORD,
+    )
+    print("Ensured payload index on 'user_id'")
+
 
 # ── Point ID Generation ──────────────────────────────────────────────────────
 
@@ -108,12 +118,16 @@ def chunk_id_to_point_id(chunk_id: str) -> str:
 
 # ── Embedding ───────────────────────────────────────────────────────────────
 
-def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: str, batch_size: int = 8) -> int:
+def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: str, batch_size: int = 8, user_id: str | None = None) -> int:
     """
     Embed and upload chunks in small batches to avoid holding all chunks'
     embeddings in memory simultaneously — critical on memory-constrained
     hosts (Render free tier: 512MB). Large documents (20+ chunks) were
     causing OOM when the full batch was embedded before any upload happened.
+
+    user_id (Phase 8): stamped onto every point's payload so retriever.py
+    can filter to one user's own documents. None is allowed (pre-Phase-8
+    points, or an unauthenticated ingestion path) and simply omits the field.
     """
     model = get_embedding_model()
     total_uploaded = 0
@@ -137,6 +151,8 @@ def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: 
                 "chunk_index": chunk["chunk_index"],
                 "chunk_type": chunk["chunk_type"],
             }
+            if user_id:
+                payload["user_id"] = user_id
             points.append(
                 PointStruct(
                     id=chunk_id_to_point_id(chunk["chunk_id"]),
@@ -199,9 +215,9 @@ def upload_to_qdrant(chunks: list[dict]) -> int:
 
 # ── Main Pipeline Function ───────────────────────────────────────────────────
 
-def embed_and_store(chunks: list[dict]) -> int:
+def embed_and_store(chunks: list[dict], user_id: str | None = None) -> int:
     ensure_collection_exists()
-    count = embed_chunks_and_upload(chunks, qdrant, COLLECTION_NAME, batch_size=4)
+    count = embed_chunks_and_upload(chunks, qdrant, COLLECTION_NAME, batch_size=4, user_id=user_id)
     return count
 
 

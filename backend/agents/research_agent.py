@@ -18,6 +18,7 @@ def research_node(state: ResearchState) -> dict:
     # graph is ever invoked without going through rewrite_query_node first.
     search_query = state.get("rewritten_query") or state["query"]
     document_scope = state.get("document_scope")
+    user_id = state.get("user_id")  # NEW (Phase 8) — scopes retrieval to the logged-in user
     revision_count = state.get("revision_count", 0)
 
     # On retry, keep the SAME resolved query for retrieval — don't concatenate
@@ -31,7 +32,7 @@ def research_node(state: ResearchState) -> dict:
 
     print(f"[research_node] attempt={revision_count + 1}, query='{search_query}', top_k={top_k}")
 
-    chunks = retrieve(search_query, top_k=top_k, source_file=document_scope)
+    chunks = retrieve(search_query, top_k=top_k, source_file=document_scope, user_id=user_id)
 
     print(f"[research_node] retrieved {len(chunks)} chunks")
 

@@ -12,6 +12,9 @@ class ResearchState(TypedDict):
     rewritten_query: str          # NEW — standalone version of query, used for retrieval
     chat_history: list[ChatTurn]  # NEW — prior turns, capped to last N by the caller
     document_scope: str | None      # ← new: which document to restrict search to
+    user_id: str | None            # NEW (Phase 8) — restricts retrieval to this user's own
+                                    # Qdrant points. Set from the authenticated session in
+                                    # routes_query.py, never taken from client request body.
     retrieved_chunks: list[dict]        # raw retrieval hits (text + table, with metadata)
     synthesis_output: str               # LLM-generated answer
     critique_passed: bool

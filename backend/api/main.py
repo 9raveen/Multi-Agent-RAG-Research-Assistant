@@ -8,6 +8,8 @@ from retrieval.embedding_model import get_embedding_model
 from api.routes_query import router as query_router
 from api.routes_upload import router as upload_router
 from api.routes_evaluation import router as evaluation_router
+from api.routes_auth import router as auth_router
+from db.database import init_db
 
 app = FastAPI(
     title="Multi-Agent RAG Research Assistant",
@@ -30,6 +32,7 @@ app.add_middleware(
 app.include_router(query_router)
 app.include_router(upload_router)
 app.include_router(evaluation_router)
+app.include_router(auth_router)
 
 
 @app.on_event("startup")
@@ -37,6 +40,15 @@ async def preload_model():
     print("Pre-loading embedding model at startup...")
     get_embedding_model()
     print("Embedding model ready.")
+
+
+@app.on_event("startup")
+async def create_db_tables():
+    # Idempotent — create_all only creates tables that don't already exist.
+    # Fine to leave running on every startup at this stage of the project.
+    print("Ensuring DB tables exist...")
+    await init_db()
+    print("DB tables ready.")
 
 
 @app.get("/health")
