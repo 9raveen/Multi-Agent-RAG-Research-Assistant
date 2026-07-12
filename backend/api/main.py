@@ -35,6 +35,13 @@ app.add_middleware(
         "http://127.0.0.1:5173",
     ],
     allow_origin_regex=r"https://multi-agent-rag-research-assistant-.*\.vercel\.app",
+    # allow_credentials=True is harmless to leave on but no longer load-
+    # bearing for auth: the frontend switched from httpOnly cookies to a
+    # Bearer token in the Authorization header (see auth/dependencies.py),
+    # specifically to sidestep an HF Spaces proxy bug that drops the
+    # Access-Control-Allow-Credentials header on preflight requests. Bearer
+    # tokens don't use the browser's credentialed-request mode, so this
+    # setting simply isn't checked anymore for the auth flow.
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -25,6 +25,13 @@ class UserOut(BaseModel):
         from_attributes = True  # lets .from_orm-style construction work off a SQLAlchemy User row
 
 
+class AuthResponse(BaseModel):
+    id: str
+    email: str
+    access_token: str
+    token_type: str = "bearer"
+
+
 class ChatTurnSchema(BaseModel):
     role: str
     content: str
@@ -102,4 +109,3 @@ class ConversationDetail(BaseModel):
     document_id: str | None
     created_at: str
     messages: list[MessageOut]
-
