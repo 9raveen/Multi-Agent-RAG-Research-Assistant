@@ -19,11 +19,21 @@ app = FastAPI(
 )
 
 # CORS: allow the deployed Vercel frontend (production + preview URLs).
-# No trailing slash on the origin — browsers send Origin without one,
+# No trailing slash on any origin — browsers send Origin without one,
 # so a trailing slash here would silently fail to match.
+#
+# localhost origins added for local dev (`npm run dev` defaults to 5173,
+# but Vite falls back to 5174/5175 etc. if 5173 is already taken — listing
+# a few common fallbacks so this doesn't break on a random free port).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://multi-agent-rag-research-assistant.vercel.app"],
+    allow_origins=[
+        "https://multi-agent-rag-research-assistant.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5173",
+    ],
     allow_origin_regex=r"https://multi-agent-rag-research-assistant-.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
