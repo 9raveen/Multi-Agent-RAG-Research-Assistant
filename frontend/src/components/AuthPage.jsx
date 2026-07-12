@@ -5,10 +5,15 @@
 // rest of the app is structured, and there's no URL/back-button benefit to
 // splitting them here since there's nowhere else to navigate to anyway.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/useAuth";
+import './AuthPage.css';
 
-export default function AuthPage() {
+export default function AuthPage({ onBack }) {
+  useEffect(() => {
+    document.body.classList.add('dark-theme');
+    return () => document.body.classList.remove('dark-theme');
+  }, []);
   const { login, signup } = useAuth();
   const [mode, setMode] = useState("login"); // "login" | "signup"
   const [email, setEmail] = useState("");
@@ -29,8 +34,6 @@ export default function AuthPage() {
       } else {
         await signup(email, password);
       }
-      // No further action needed on success — AuthContext's `user` state
-      // updates, and App.jsx swaps this screen out for the main app.
     } catch (err) {
       setError(err.message);
     } finally {
@@ -44,60 +47,78 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card panel">
-        <h2>{mode === "login" ? "Log In" : "Create an Account"}</h2>
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label htmlFor="auth-email">Email</label>
-          <input
-            id="auth-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
-            required
-          />
-
-          <label htmlFor="auth-password">Password</label>
-          <input
-            id="auth-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete={
-              mode === "login" ? "current-password" : "new-password"
-            }
-            required
-          />
-
-          {error && <div className="result-box error auth-error">{error}</div>}
-
-          <button type="submit" disabled={submitting}>
-            {submitting
-              ? mode === "login"
-                ? "Logging in..."
-                : "Signing up..."
-              : mode === "login"
-                ? "Log In"
-                : "Sign Up"}
+    <div className="auth-split-page">
+      <div className="auth-left">
+        {onBack && (
+          <button type="button" onClick={onBack} className="back-link">
+            &larr; BACK TO COVER
           </button>
-        </form>
+        )}
+        <div className="auth-left-content">
+          <span className="library-card-label">THE LIBRARY CARD</span>
+          <h1 className="auth-heading">Welcome to <span className="italic-serif">MARA</span>.</h1>
+          <p className="auth-desc">
+            A quiet reading room where multiple research agents work on your questions. Sign in to open your workspace.
+          </p>
+        </div>
+        <div className="auth-left-footer">
+          <span>VOL. 01</span>
+          <span>EST. MMXXIV</span>
+        </div>
+      </div>
+      
+      <div className="auth-right">
+        <div className="auth-form-container">
+          <div className="auth-logo">
+            <img src="/logo.png" alt="m logo" className="custom-logo" style={{ height: '24px' }} /> MARA / AI
+          </div>
+          
+          <h2 className="auth-title">{mode === "login" ? "Sign in" : "Create account"}</h2>
+          <p className="auth-subtitle">
+            {mode === "login" ? "Continue to your research library." : "Start your research library."}
+          </p>
 
-        <p className="auth-toggle">
-          {mode === "login"
-            ? "Don't have an account?"
-            : "Already have an account?"}{" "}
-          <button
-            type="button"
-            className="auth-toggle-btn"
-            onClick={toggleMode}
-          >
-            {mode === "login" ? "Sign up" : "Log in"}
-          </button>
-        </p>
+          <form onSubmit={handleSubmit} className="auth-form-styled">
+            <div className="input-group">
+              <label htmlFor="auth-email">EMAIL</label>
+              <input
+                id="auth-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@library.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="auth-password">PASSWORD</label>
+              <input
+                id="auth-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                required
+              />
+            </div>
+
+            {error && <div className="result-box error auth-error">{error}</div>}
+
+            <button type="submit" disabled={submitting} className="auth-submit-btn">
+              {submitting ? (mode === "login" ? "Signing in..." : "Creating...") : (mode === "login" ? "Sign in" : "Create account")}
+            </button>
+          </form>
+
+          <p className="auth-toggle-text">
+            {mode === "login" ? "New to MARA? " : "Already have an account? "}
+            <button type="button" className="auth-toggle-inline" onClick={toggleMode}>
+              {mode === "login" ? "Create one" : "Sign in"}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

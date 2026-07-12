@@ -29,19 +29,23 @@
   --font-mono: ui-monospace, 'Fira Code', Consolas, monospace;
 }
 
-body {
+html, body {
+  height: 100%;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
   font-family: var(--font-main);
-  background: var(--bg-color);
-  color: var(--text);
-  min-height: 100vh;
+  background: #F4F2EB;
+  color: #1A1A1A;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
   position: relative;
 }
 
-/* Animated Dynamic Background */
+/* Animated Dynamic Background - only shown on cover/auth pages */
 body::before,
 body::after {
   content: "";
@@ -52,8 +56,18 @@ body::after {
   filter: blur(120px);
   z-index: -1;
   animation: floatOrb 25s infinite ease-in-out alternate;
-  opacity: 0.35;
+  opacity: 0;
   pointer-events: none;
+}
+
+body.dark-theme {
+  background: var(--bg-color);
+  color: var(--text);
+}
+
+body.dark-theme::before,
+body.dark-theme::after {
+  opacity: 0.35;
 }
 
 body::before {
@@ -85,7 +99,8 @@ body::after {
 #root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }

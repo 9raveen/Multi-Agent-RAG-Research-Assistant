@@ -1,0 +1,425 @@
+/* CoverPage.css */
+
+.cover-page {
+  background-color: #F4F2EB;
+  color: #1A1A1A;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.cover-page h1,
+.cover-page h2,
+.cover-page h3,
+.cover-page h4 {
+  color: #1A1A1A;
+}
+
+/* Typography utilities */
+.italic-serif {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.underline {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+.section-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7A7A7A;
+  display: block;
+}
+
+/* Nav */
+.cover-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 3rem;
+  border-bottom: 1px solid #E5E2D9;
+}
+
+.cover-logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: #1A1A1A;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.custom-logo {
+  height: 32px; /* slightly taller than text for the handwritten feel */
+  width: auto;
+  object-fit: contain;
+  mix-blend-mode: multiply; /* ensures white bg doesn't cover things */
+}
+
+.logo-italic {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.logo-star {
+  font-size: 1rem;
+}
+
+.cover-links {
+  display: flex;
+  gap: 3rem;
+}
+
+.cover-links a {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  color: #1A1A1A;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: opacity 0.2s ease;
+}
+
+.cover-links a:hover {
+  opacity: 0.6;
+}
+
+.cover-btn-dark {
+  background: #000000;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.cover-btn-dark:hover {
+  background: #333333;
+  transform: translateY(-1px);
+}
+
+.cover-btn-dark.large {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
+.cover-link-btn {
+  background: none;
+  border: none;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #1A1A1A;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+.cover-link-btn:hover {
+  text-decoration: underline;
+}
+
+/* Ticker */
+.cover-ticker {
+  background-color: #F4F2EB;
+  border-bottom: 1px solid #E5E2D9;
+  padding: 0.5rem 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: #7A7A7A;
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 80s linear infinite;
+}
+
+.ticker-track span {
+  padding-right: 3rem;
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Main */
+.cover-main {
+  flex: 1;
+}
+
+/* Hero Section */
+.hero-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 6rem 3rem;
+  gap: 4rem;
+  align-items: center;
+  border-bottom: 1px solid #E5E2D9;
+}
+
+.hero-title {
+  font-family: 'Newsreader', serif;
+  font-size: 5.5rem;
+  line-height: 1.1;
+  font-weight: 400;
+  margin: 1.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.hero-description {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: #4A4A4A;
+  margin-bottom: 3rem;
+  max-width: 480px;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.hero-illustration {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.illustration-placeholder {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 550px;
+  border: 1px solid #D1CFC7;
+  border-radius: 2px;
+}
+
+.illustration-caption {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  color: #1A1A1A; /* Text in the new screenshot looks quite dark, let's use dark gray/black */
+  border-top: 1px solid #D1CFC7;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.reading-room-img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  mix-blend-mode: multiply;
+  padding: 2rem;
+}
+
+/* Features Section */
+.features-section {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid #E5E2D9;
+}
+
+.feature-card {
+  padding: 4rem 3rem;
+}
+
+.border-left {
+  border-left: 1px solid #E5E2D9;
+}
+
+.border-right {
+  border-right: 1px solid #E5E2D9;
+}
+
+.feature-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: #7A7A7A;
+  margin-bottom: 2rem;
+  display: block;
+}
+
+.feature-icon {
+  margin-bottom: 1.5rem;
+}
+
+.feature-title {
+  font-family: 'Newsreader', serif;
+  font-size: 2rem;
+  font-weight: 400;
+  margin-bottom: 1rem;
+}
+
+.feature-desc {
+  color: #4A4A4A;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+/* Workflow Section */
+.workflow-section {
+  padding: 6rem 3rem;
+  border-bottom: 1px solid #E5E2D9;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+}
+
+.workflow-title {
+  font-family: 'Newsreader', serif;
+  font-size: 3.5rem;
+  line-height: 1.1;
+  font-weight: 400;
+  margin-top: 1.5rem;
+}
+
+.workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  padding-top: 4rem;
+}
+
+.workflow-step {
+  border-top: 1px solid #1A1A1A;
+  padding-top: 1.5rem;
+}
+
+.step-number {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.step-title {
+  font-family: 'Newsreader', serif;
+  font-size: 1.75rem;
+  font-weight: 400;
+  margin-bottom: 1rem;
+}
+
+.step-desc {
+  color: #4A4A4A;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Manifesto Section */
+.manifesto-section {
+  padding: 8rem 3rem;
+  display: grid;
+  grid-template-columns: 1fr 2.5fr;
+  gap: 2rem;
+  border-bottom: 1px solid #E5E2D9;
+}
+
+.manifesto-label {
+  padding-top: 1rem; /* Aligns visually with the quote text */
+}
+
+.manifesto-content {
+  max-width: 1000px;
+}
+
+.manifesto-quote {
+  font-family: 'Newsreader', serif;
+  font-size: 2.75rem;
+  line-height: 1.15;
+  font-weight: 400;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap; /* Force no wrap for the entire block if using <br/> */
+}
+
+.manifesto-author {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #7A7A7A;
+}
+
+.author-star {
+  color: #1A1A1A;
+  font-size: 1.2rem;
+}
+
+/* Footer */
+.cover-footer {
+  padding: 2rem 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #7A7A7A;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .hero-section, .workflow-section {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  
+  .hero-title {
+    font-size: 4rem;
+  }
+  
+  .manifesto-section {
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .manifesto-quote {
+    font-size: 2.5rem;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 768px) {
+  .cover-links {
+    display: none; /* Hide nav links on mobile */
+  }
+  
+  .features-section, .workflow-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .border-left, .border-right {
+    border: none;
+    border-top: 1px solid #E5E2D9;
+  }
+}
