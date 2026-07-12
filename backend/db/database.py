@@ -18,6 +18,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -48,8 +49,18 @@ if "sslmode=require" in DATABASE_URL:
 engine = create_async_engine(
     DATABASE_URL,
     connect_args=_connect_args,
-    pool_pre_ping=True,   # checks connection is alive before using it — avoids
-                          # "connection closed" errors after HF Spaces idles out
+    poolclass=NullPool,
+    # NullPool (not the default pool): db/crud.py's sync-route wrappers
+    # (get_or_create_conversation_sync, add_message_sync) call asyncio.run()
+    # from inside /query and /query/stream, and EACH asyncio.run() call spins
+    # up a brand-new event loop. A pooled connection created in one loop can't
+    # be reused in the next — asyncpg raises "Task attached to a different
+    # loop", which surfaced as an unhandled 500. NullPool opens a fresh
+    # connection per checkout and closes it on checkin, so nothing persists
+    # across loop boundaries. This is also a reasonable pairing with Neon's
+    # pooled connection string specifically — Neon's own pooler (PgBouncer-
+    # style) already handles connection reuse server-side, so client-side
+    # pooling here would have been redundant anyway.
     echo=False,           # set True temporarily if you need to debug generated SQL
 )
 

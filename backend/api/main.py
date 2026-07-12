@@ -9,6 +9,7 @@ from api.routes_query import router as query_router
 from api.routes_upload import router as upload_router
 from api.routes_evaluation import router as evaluation_router
 from api.routes_auth import router as auth_router
+from api.routes_conversations import router as conversations_router
 from db.database import init_db
 
 app = FastAPI(
@@ -33,6 +34,7 @@ app.include_router(query_router)
 app.include_router(upload_router)
 app.include_router(evaluation_router)
 app.include_router(auth_router)
+app.include_router(conversations_router)
 
 
 @app.on_event("startup")

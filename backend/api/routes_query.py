@@ -17,6 +17,7 @@ from agents.synthesis_agent import synthesize_stream
 from agents.critique_agent import critique_node
 from auth.dependencies import get_current_user
 from db.models import User
+from db.crud import get_or_create_conversation_sync, add_message_sync, get_chat_history_sync
 
 router = APIRouter()
 
@@ -30,10 +31,27 @@ def run_query(request: QueryRequest, user: User = Depends(get_current_user)):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
+    try:
+        conversation = get_or_create_conversation_sync(
+            user_id=user.id,
+            conversation_id=request.conversation_id,
+            document_scope=request.document_scope,
+            first_query=request.query,
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    # Server-authoritative (Phase 8): pull prior turns from Postgres rather
+    # than trusting request.chat_history. Must happen BEFORE add_message_sync
+    # below inserts the current query, or it would show up as its own history.
+    chat_history = get_chat_history_sync(conversation.id)
+
+    add_message_sync(conversation_id=conversation.id, role="user", content=request.query)
+
     initial_state = {
         "query": request.query,
         "rewritten_query": "",
-        "chat_history": [t.dict() for t in request.chat_history],
+        "chat_history": chat_history,
         "document_scope": request.document_scope,
         "user_id": str(user.id),
         "retrieved_chunks": [],
@@ -74,9 +92,19 @@ def run_query(request: QueryRequest, user: User = Depends(get_current_user)):
         for c in final_state["retrieved_chunks"]
     ]
 
+    add_message_sync(
+        conversation_id=conversation.id,
+        role="assistant",
+        content=final_state["synthesis_output"],
+        sources=sources,
+        critique_passed=final_state["critique_passed"],
+        revisions_taken=final_state["revision_count"],
+    )
+
     return QueryResponse(
         query=final_state["query"],
         document_scope=request.document_scope,
+        conversation_id=str(conversation.id),
         answer=final_state["synthesis_output"],
         critique_passed=final_state["critique_passed"],
         revisions_taken=final_state["revision_count"],
@@ -94,11 +122,31 @@ def run_query_stream(request: QueryRequest, user: User = Depends(get_current_use
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
+    # Resolved BEFORE entering the generator, not inside it — once the
+    # StreamingResponse starts, headers are already sent and an exception
+    # can no longer become a clean 404; it would just look like a broken
+    # stream to the frontend. Failing fast here keeps that a normal HTTP error.
+    try:
+        conversation = get_or_create_conversation_sync(
+            user_id=user.id,
+            conversation_id=request.conversation_id,
+            document_scope=request.document_scope,
+            first_query=request.query,
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    # Server-authoritative (Phase 8): same as /query — pull prior turns from
+    # Postgres BEFORE inserting the current message.
+    chat_history = get_chat_history_sync(conversation.id)
+
+    add_message_sync(conversation_id=conversation.id, role="user", content=request.query)
+
     def event_generator():
         state = {
             "query": request.query,
             "rewritten_query": "",
-            "chat_history": [t.dict() for t in request.chat_history],
+            "chat_history": chat_history,
             "document_scope": request.document_scope,
             "user_id": str(user.id),
             "retrieved_chunks": [],
@@ -176,7 +224,17 @@ def run_query_stream(request: QueryRequest, user: User = Depends(get_current_use
             for c in state["retrieved_chunks"]
         ]
 
+        add_message_sync(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=state["synthesis_output"],
+            sources=sources,
+            critique_passed=state["critique_passed"],
+            revisions_taken=state["revision_count"],
+        )
+
         yield _sse_event("done", {
+            "conversation_id": str(conversation.id),
             "answer": state["synthesis_output"],
             "critique_passed": state["critique_passed"],
             "revisions_taken": state["revision_count"],
