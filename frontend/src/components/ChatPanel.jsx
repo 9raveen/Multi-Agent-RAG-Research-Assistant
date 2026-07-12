@@ -2,11 +2,46 @@ import { useState, useRef, useEffect } from "react";
 import { askQueryStream } from "../api";
 import AnswerCard from "./AnswerCard";
 
-export default function ChatPanel({ documentScope }) {
-  const [messages, setMessages] = useState([]);
+// Maps a stored DB message row (from GET /conversations/{id}) into the same
+// shape this component already uses internally for rendering, so loading
+// history and live-streaming a new answer both render through the same
+// AnswerCard path.
+function dbMessageToLocal(m) {
+  if (m.role === "user") {
+    return { role: "user", content: m.content };
+  }
+  return {
+    role: "assistant",
+    result: {
+      answer: m.content,
+      critique_passed: m.critique_passed,
+      revisions_taken: m.revisions_taken,
+      sources: m.sources || [],
+      trace: undefined, // not persisted — only exists for answers generated this session
+    },
+  };
+}
+
+export default function ChatPanel({
+  documentScope,
+  conversationId,
+  initialMessages,
+  onConversationIdChange,
+  onMessageSent,
+}) {
+  const [messages, setMessages] = useState(() =>
+    (initialMessages || []).map(dbMessageToLocal),
+  );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+
+  // Reset the visible chat whenever a DIFFERENT conversation is selected
+  // (sidebar click) or cleared (New Chat) — initialMessages/conversationId
+  // change together from the parent, so this re-syncs local state to match.
+  useEffect(() => {
+    setMessages((initialMessages || []).map(dbMessageToLocal));
+  }, [conversationId, initialMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -24,13 +59,9 @@ export default function ChatPanel({ documentScope }) {
     if (!input.trim() || loading) return;
 
     const userText = input;
+    const isNewConversation = !conversationId;
     setInput("");
     setLoading(true);
-
-    const chatHistory = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.role === "user" ? msg.content : msg.result?.answer || "",
-    }));
 
     setMessages((prev) => [
       ...prev,
@@ -39,7 +70,7 @@ export default function ChatPanel({ documentScope }) {
     ]);
 
     try {
-      await askQueryStream(userText, documentScope, chatHistory, {
+      await askQueryStream(userText, documentScope, [], conversationId, {
         onToken: (text) => {
           updateLastMessage((msg) => ({
             ...msg,
@@ -59,6 +90,14 @@ export default function ChatPanel({ documentScope }) {
         onDone: (result) => {
           updateLastMessage(() => ({ role: "assistant", result }));
           setLoading(false);
+          // First message of a brand new conversation — the backend just
+          // created it and returned its id. Tell the parent so follow-up
+          // messages continue this same conversation instead of starting
+          // a new one each time, and so the sidebar picks it up.
+          if (isNewConversation && result.conversation_id) {
+            onConversationIdChange?.(result.conversation_id);
+          }
+          onMessageSent?.();
         },
         onError: (message) => {
           updateLastMessage(() => ({ role: "assistant", error: message }));
