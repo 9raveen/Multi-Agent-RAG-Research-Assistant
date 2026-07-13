@@ -13,7 +13,7 @@ from api.schemas import QueryRequest, QueryResponse
 from agents.graph import build_graph, route_after_critique
 from agents.query_rewrite_agent import rewrite_query_node
 from agents.research_agent import research_node
-from agents.synthesis_agent import synthesize_stream
+from agents.synthesis_agent import synthesize_stream, summarize_document_stream
 from agents.critique_agent import critique_node
 from auth.dependencies import get_current_user
 from db.models import User
@@ -54,6 +54,7 @@ def run_query(request: QueryRequest, user: User = Depends(get_current_user)):
         "chat_history": chat_history,
         "document_scope": request.document_scope,
         "user_id": str(user.id),
+        "is_summary_request": False,  # set by research_node once it runs; default here for consistency
         "retrieved_chunks": [],
         "synthesis_output": "",
         "critique_passed": False,
@@ -149,6 +150,7 @@ def run_query_stream(request: QueryRequest, user: User = Depends(get_current_use
             "chat_history": chat_history,
             "document_scope": request.document_scope,
             "user_id": str(user.id),
+            "is_summary_request": False,  # set by research_node once it runs
             "retrieved_chunks": [],
             "synthesis_output": "",
             "critique_passed": False,
@@ -180,7 +182,11 @@ def run_query_stream(request: QueryRequest, user: User = Depends(get_current_use
             accumulated = ""
             try:
                 search_query = state.get("rewritten_query") or state["query"]
-                for token in synthesize_stream(search_query, state["retrieved_chunks"]):
+                if state.get("is_summary_request"):
+                    token_stream = summarize_document_stream(state["retrieved_chunks"])
+                else:
+                    token_stream = synthesize_stream(search_query, state["retrieved_chunks"])
+                for token in token_stream:
                     accumulated += token
                     yield _sse_event("token", {"text": token})
                 state["previous_answer"] = state["synthesis_output"]

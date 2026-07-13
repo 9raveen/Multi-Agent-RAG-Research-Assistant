@@ -15,6 +15,9 @@ class ResearchState(TypedDict):
     user_id: str | None            # NEW (Phase 8) — restricts retrieval to this user's own
                                     # Qdrant points. Set from the authenticated session in
                                     # routes_query.py, never taken from client request body.
+    is_summary_request: bool       # NEW — set by research_node when the query looks like a
+                                    # whole-document summary request; tells synthesis_node to
+                                    # use the map-reduce summarization path instead of normal QA.
     retrieved_chunks: list[dict]        # raw retrieval hits (text + table, with metadata)
     synthesis_output: str               # LLM-generated answer
     critique_passed: bool

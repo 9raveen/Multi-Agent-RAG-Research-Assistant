@@ -35,10 +35,30 @@ Respond ONLY with valid JSON in this exact format, nothing else:
 
 
 def critique_node(state: ResearchState) -> dict:
+    revision_count = state.get("revision_count", 0) + 1
+
+    # Summary requests skip critique entirely — two reasons:
+    # 1. The full document context (can be 70+ chunks / 20K+ words) blows
+    #    straight through this model's token-per-minute limit. This isn't a
+    #    "reduce the context" problem — the whole point of a summary is that
+    #    it draws on the ENTIRE document, so there's no smaller subset of
+    #    chunks that would still be a meaningful fact-check target.
+    # 2. Map-reduce summarization already runs every chunk through the
+    #    larger 70b model carefully (once per batch, then again to combine)
+    #    — a second full-document fact-check pass on a smaller/cheaper model
+    #    isn't adding the same hallucination-safety value it does for a
+    #    normal single-answer QA response grounded in ~8 chunks.
+    if state.get("is_summary_request"):
+        print("[critique_node] summary request — skipping critique (see comment for why)")
+        return {
+            "critique_passed": True,
+            "critique_feedback": "Summary requests skip fact-check critique — map-reduce already runs each section through the model individually.",
+            "revision_count": revision_count,
+        }
+
     query = state["query"]
     answer = state["synthesis_output"]
     chunks = state["retrieved_chunks"]
-    revision_count = state.get("revision_count", 0) + 1
 
     context = format_chunks_for_prompt(chunks)
 

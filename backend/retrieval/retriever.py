@@ -72,6 +72,61 @@ def retrieve(query: str, top_k: int = 5, source_file: str | None = None, user_id
     return results
 
 
+def retrieve_all_chunks(source_file: str, user_id: str | None = None) -> list[dict]:
+    """
+    Fetch EVERY chunk belonging to one document, in original reading order —
+    not similarity search. Exists specifically for document summarization.
+
+    Top-k similarity search (retrieve() above) is the wrong tool for
+    "summarize this document": a summarization query is topically generic,
+    so vector search has no strong signal for what's important and just
+    returns some semantically-average handful of chunks — not comprehensive
+    coverage. A real summary needs the whole document, not the 5-8 chunks
+    that happen to be closest to the word "summarize."
+
+    Uses Qdrant's scroll() API (pagination through ALL matching points)
+    rather than query_points() (nearest-neighbor search) — scroll has no
+    query vector at all, it just walks every point matching the filter.
+    """
+    conditions = [FieldCondition(key="source_file", match=MatchValue(value=source_file))]
+    if user_id:
+        conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
+    scroll_filter = Filter(must=conditions)
+
+    all_points = []
+    next_offset = None
+    while True:
+        points, next_offset = qdrant.scroll(
+            collection_name=COLLECTION_NAME,
+            scroll_filter=scroll_filter,
+            limit=100,  # Qdrant page size per scroll call, not a cap on total results
+            offset=next_offset,
+            with_payload=True,
+        )
+        all_points.extend(points)
+        if next_offset is None:
+            break
+
+    results = []
+    for point in all_points:
+        payload = point.payload
+        results.append({
+            "text": payload["text"],
+            "parent_text": payload["parent_text"],
+            "page_number": payload["page_number"],
+            "source_file": payload["source_file"],
+            "section_header": payload["section_header"],
+            "chunk_id": payload["chunk_id"],
+            "chunk_type": payload.get("chunk_type", "text"),
+            "chunk_index": payload.get("chunk_index", 0),
+        })
+
+    # Reading order, not insertion/scroll order — scroll's internal order
+    # isn't guaranteed to match the document's actual page/section flow.
+    results.sort(key=lambda c: c["chunk_index"])
+    return results
+
+
 def format_chunks_for_prompt(chunks: list[dict]) -> str:
     """
     Turn retrieved chunks into a single string block for LLM context injection.
