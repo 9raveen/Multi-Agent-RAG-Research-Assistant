@@ -208,7 +208,7 @@ textarea {
   width: 100%;
   padding: 1.25rem;
   background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
   color: var(--text-h);
   font-family: inherit;
@@ -389,11 +389,11 @@ button:disabled {
   margin-top: 2rem;
   padding: 2rem;
   background: transparent;
-  border: 1px solid #d1cfc7;
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 @keyframes slideUp {
@@ -436,22 +436,22 @@ button:disabled {
   line-height: 1.6;
   font-size: 1rem;
   white-space: pre-wrap;
-  color: #1a1a1a;
+  color: var(--ink);
   margin-bottom: 2rem;
 }
 
 .meta {
   font-family: "Space Mono", monospace;
-  color: #7a7a7a;
+  color: var(--muted);
   font-size: 0.75rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid #e5e2d9;
+  border-bottom: 1px solid var(--border-soft);
   margin-bottom: 1.25rem;
 }
 
 .sources h4 {
   font-size: 0.75rem;
-  color: #7a7a7a;
+  color: var(--muted);
   font-family: "Space Mono", monospace;
   margin-bottom: 1rem;
   text-transform: uppercase;
@@ -471,7 +471,7 @@ button:disabled {
   padding: 0.5rem 0;
   border: none;
   font-size: 0.95rem;
-  color: #1a1a1a;
+  color: var(--ink);
   font-family: "Inter", sans-serif;
   display: flex;
   align-items: center;
@@ -483,7 +483,7 @@ button:disabled {
 .sources li:hover {
   background: transparent;
   transform: translateX(4px);
-  color: #4a4a4a;
+  color: var(--ink-soft);
 }
 
 .tag {
@@ -528,7 +528,7 @@ button:disabled {
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #7a7a7a;
+  color: var(--muted);
 }
 
 .trace-steps {
@@ -563,13 +563,13 @@ button:disabled {
 .trace-step__node {
   font-weight: 700;
   min-width: 100px;
-  color: #1a1a1a;
+  color: var(--ink);
   font-family: "Inter", sans-serif;
 }
 
 .trace-step__detail {
   font-size: 14px;
-  color: #4a4a4a;
+  color: var(--ink-soft);
   font-family: "Inter", sans-serif;
 }
 
@@ -693,7 +693,7 @@ button:disabled {
   font-family: "Space Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 0.15em;
-  color: #7a7a7a;
+  color: var(--muted);
   text-transform: uppercase;
   margin: 0 auto 20px auto;
   text-align: center;
@@ -711,7 +711,7 @@ button:disabled {
 }
 
 .chat-empty-state {
-  color: #7a7a7a;
+  color: var(--muted);
   font-size: 14px;
   text-align: center;
   padding: 40px 0;
@@ -740,15 +740,15 @@ button:disabled {
 
 .chat-bubble--user {
   align-self: flex-end;
-  background: #e5e2d9;
-  color: #1a1a1a;
+  background: var(--border-soft);
+  color: var(--ink);
   border: none;
 }
 
 .chat-bubble--assistant {
   align-self: flex-start;
   background: transparent;
-  color: #1a1a1a;
+  color: var(--ink);
   border: none;
 }
 
@@ -762,7 +762,7 @@ button:disabled {
 .chat-bubble--loading {
   align-self: flex-start;
   background: transparent;
-  color: #7a7a7a;
+  color: var(--muted);
   font-style: italic;
   display: flex;
   align-items: center;
@@ -773,8 +773,8 @@ button:disabled {
   content: "";
   width: 16px;
   height: 16px;
-  border: 2px solid #d1cfc7;
-  border-top-color: #1a1a1a;
+  border: 2px solid var(--border);
+  border-top-color: var(--ink);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -792,9 +792,9 @@ button:disabled {
   resize: none;
   padding: 14px 18px;
   border-radius: 8px;
-  border: 1px solid #d1cfc7;
-  background: #ffffff;
-  color: #1a1a1a;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
   font-family: inherit;
   font-size: 15px;
   transition: all 0.3s;
@@ -803,7 +803,7 @@ button:disabled {
 
 .chat-input-row textarea:focus {
   outline: none;
-  border-color: #1a1a1a;
+  border-color: var(--ink);
 }
 
 .chat-input-row button {
@@ -811,8 +811,8 @@ button:disabled {
   height: 50px;
   border-radius: 8px;
   border: none;
-  background: #1a1a1a;
-  color: #fff;
+  background: var(--invert-bg);
+  color: var(--invert-text);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -830,13 +830,13 @@ button:disabled {
   align-self: flex-start;
   background: transparent;
   border: none;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .streaming-cursor {
   display: inline-block;
   animation: blink 1s step-start infinite;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 @keyframes blink {
@@ -892,7 +892,7 @@ button:disabled {
   width: 100%;
   padding: 0.85rem 1rem;
   background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 10px;
   color: var(--text-h);
   font-family: inherit;
@@ -966,7 +966,7 @@ button:disabled {
   font-size: 0.85rem;
   background: rgba(255, 255, 255, 0.05);
   box-shadow: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
 }
 
 .logout-btn:hover:not(:disabled) {
@@ -981,8 +981,8 @@ button:disabled {
 /* --- New Dashboard Layout Styles --- */
 
 .app-dashboard {
-  background-color: #f4f2eb;
-  color: #1a1a1a;
+  background-color: var(--bg);
+  color: var(--ink);
   height: 100%;
   flex: 1;
   min-height: 0;
@@ -1003,8 +1003,8 @@ button:disabled {
 /* Sidebar */
 .conversation-sidebar {
   width: 280px;
-  background-color: #f0efe9;
-  border-right: 1px solid #d1cfc7;
+  background-color: var(--bg-alt);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem 0.5rem 1rem;
@@ -1032,9 +1032,9 @@ button:disabled {
 
 .sidebar-toggle-btn {
   background: none;
-  border: 1px solid #d1cfc7;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: #1a1a1a;
+  color: var(--ink);
   width: 28px;
   height: 28px;
   display: flex;
@@ -1045,7 +1045,7 @@ button:disabled {
   box-shadow: none;
 }
 .sidebar-toggle-btn:hover {
-  background: #e5e2d9;
+  background: var(--border-soft);
   transform: none;
   box-shadow: none;
 }
@@ -1061,8 +1061,8 @@ button:disabled {
 }
 
 .new-chat-btn-dark {
-  background: #1a1a1a;
-  color: #ffffff;
+  background: var(--invert-bg);
+  color: var(--invert-text);
   border: none;
   border-radius: 6px;
   padding: 0.75rem 1rem;
@@ -1079,7 +1079,7 @@ button:disabled {
   opacity: 0.8;
   transform: none;
   box-shadow: none;
-  background: #1a1a1a;
+  background: var(--invert-bg);
 }
 .new-chat-btn-dark::before {
   display: none;
@@ -1094,8 +1094,8 @@ button:disabled {
 
 .sidebar-upload-btn {
   background: transparent;
-  color: #1a1a1a;
-  border: 1px solid #d1cfc7;
+  color: var(--ink);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
@@ -1109,10 +1109,10 @@ button:disabled {
   transition: background 0.2s;
 }
 .sidebar-upload-btn:hover {
-  background: #e5e2d9;
+  background: var(--border-soft);
   transform: none;
   box-shadow: none;
-  border-color: #d1cfc7;
+  border-color: var(--border);
 }
 .sidebar-upload-btn::before {
   display: none;
@@ -1129,7 +1129,7 @@ button:disabled {
   font-family: "Space Mono", monospace;
   font-size: 0.7rem;
   letter-spacing: 0.15em;
-  color: #7a7a7a;
+  color: var(--muted);
   margin-bottom: 1rem;
   padding: 0 0.5rem;
   text-transform: uppercase;
@@ -1147,7 +1147,7 @@ button:disabled {
 .conversation-item {
   background: transparent;
   border: none;
-  color: #1a1a1a;
+  color: var(--ink);
   padding: 0.5rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -1160,18 +1160,18 @@ button:disabled {
   font-weight: 400;
 }
 .conversation-item:hover {
-  background: #e5e2d9;
+  background: var(--border-soft);
   transform: none;
   box-shadow: none;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 .conversation-item::before {
   display: none;
 }
 .conversation-item--active {
-  background: #e5e2d9;
+  background: var(--border-soft);
   font-weight: 500;
-  color: #1a1a1a;
+  color: var(--ink);
   border: none;
 }
 
@@ -1185,7 +1185,7 @@ button:disabled {
 .sidebar-footer {
   margin-top: auto;
   padding-top: 1rem;
-  border-top: 1px solid #d1cfc7;
+  border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1200,8 +1200,8 @@ button:disabled {
 .user-avatar {
   width: 32px;
   height: 32px;
-  background: #1a1a1a;
-  color: #fff;
+  background: var(--invert-bg);
+  color: var(--invert-text);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1218,20 +1218,20 @@ button:disabled {
 .user-email-text {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .user-status-text {
   font-family: "Space Mono", monospace;
   font-size: 0.65rem;
   letter-spacing: 0.1em;
-  color: #7a7a7a;
+  color: var(--muted);
 }
 
 .logout-icon-btn {
   background: transparent;
   border: none;
-  color: #1a1a1a;
+  color: var(--ink);
   padding: 0.5rem;
   cursor: pointer;
   box-shadow: none;
@@ -1256,7 +1256,7 @@ button:disabled {
   min-width: 0;
   overflow: hidden;
   position: relative;
-  background-color: #f4f2eb;
+  background-color: var(--bg);
 }
 
 .chat-panel {
@@ -1292,7 +1292,7 @@ button:disabled {
   font-family: "Space Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 0.15em;
-  color: #7a7a7a;
+  color: var(--muted);
   margin-bottom: 1.5rem;
 }
 
@@ -1300,7 +1300,7 @@ button:disabled {
   font-family: "Newsreader", serif;
   font-size: 3.5rem;
   font-weight: 400;
-  color: #1a1a1a;
+  color: var(--ink);
   margin-bottom: 1rem;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -1308,14 +1308,14 @@ button:disabled {
 
 .chat-hero-desc {
   font-size: 1.1rem;
-  color: #4a4a4a;
+  color: var(--ink-soft);
   line-height: 1.6;
   margin-bottom: 3rem;
 }
 
 .chat-input-hero {
-  background: #ffffff;
-  border: 1px solid #d1cfc7;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   width: 100%;
   min-width: 0;
@@ -1333,7 +1333,7 @@ button:disabled {
   resize: none;
   font-family: "Inter", sans-serif;
   font-size: 1rem;
-  color: #1a1a1a;
+  color: var(--ink);
   padding: 0;
   margin-bottom: 1rem;
   box-shadow: none;
@@ -1345,7 +1345,7 @@ button:disabled {
   background: transparent;
 }
 .chat-input-hero textarea::placeholder {
-  color: #a09e96;
+  color: var(--border-strong);
   opacity: 1;
 }
 
@@ -1353,14 +1353,14 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #e5e2d9;
+  border-top: 1px solid var(--border-soft);
   padding-top: 1rem;
 }
 
 .chat-shortcuts {
   font-family: "Space Mono", monospace;
   font-size: 0.7rem;
-  color: #a09e96;
+  color: var(--border-strong);
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -1368,8 +1368,8 @@ button:disabled {
 }
 
 .chat-hero-btn {
-  background: #7a7a7a;
-  color: #fff;
+  background: var(--muted);
+  color: var(--invert-text);
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
@@ -1380,7 +1380,7 @@ button:disabled {
   transition: background 0.2s;
 }
 .chat-hero-btn:hover:not(:disabled) {
-  background: #5a5a5a;
+  background: var(--ink-soft);
   transform: none;
   box-shadow: none;
 }
@@ -1398,7 +1398,7 @@ button:disabled {
 
 .suggestion-card {
   background: transparent;
-  border: 1px solid #d1cfc7;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.25rem;
   display: flex;
@@ -1408,23 +1408,23 @@ button:disabled {
   cursor: pointer;
   transition: background 0.2s;
   box-shadow: none;
-  color: #1a1a1a;
+  color: var(--ink);
   min-width: 0;
   box-sizing: border-box;
 }
 .suggestion-card:hover:not(:disabled) {
-  background: #e5e2d9;
+  background: var(--border-soft);
   transform: none;
   box-shadow: none;
-  border-color: #d1cfc7;
-  color: #1a1a1a;
+  border-color: var(--border);
+  color: var(--ink);
 }
 .suggestion-card::before {
   display: none;
 }
 
 .suggestion-icon {
-  color: #7a7a7a;
+  color: var(--muted);
   flex-shrink: 0;
   margin-top: 0.2rem;
 }
@@ -1437,13 +1437,13 @@ button:disabled {
   font-family: "Inter", sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--ink);
   margin: 0 0 0.5rem 0;
 }
 
 .suggestion-text p {
   font-size: 0.85rem;
-  color: #7a7a7a;
+  color: var(--muted);
   line-height: 1.4;
   margin: 0;
 }
@@ -1464,28 +1464,28 @@ button:disabled {
 
 .floating-eval .eval-dashboard {
   margin: 0;
-  background: #ffffff;
-  border: 1px solid #d1cfc7;
+  background: var(--surface);
+  border: 1px solid var(--border);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .floating-eval .eval-dashboard h4,
 .floating-eval .eval-dashboard__meta,
 .floating-eval .eval-metric__label,
 .floating-eval .eval-metric__value {
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .floating-eval .eval-metric__bar-track {
-  background: #e5e2d9;
+  background: var(--border-soft);
 }
 
 /* --- Right Library Panel --- */
 .library-panel {
   width: 320px;
-  background-color: #f4f2eb;
-  border-left: 1px solid #d1cfc7;
+  background-color: var(--bg);
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1.5rem;
@@ -1504,7 +1504,7 @@ button:disabled {
   font-family: "Space Mono", monospace;
   font-size: 0.7rem;
   letter-spacing: 0.15em;
-  color: #7a7a7a;
+  color: var(--muted);
   text-transform: uppercase;
 }
 
@@ -1512,20 +1512,20 @@ button:disabled {
   font-family: "Newsreader", serif;
   font-size: 1.5rem;
   font-weight: 400;
-  color: #1a1a1a;
+  color: var(--ink);
   margin: 0.25rem 0 0 0;
 }
 
 .library-close-btn {
   background: transparent;
   border: none;
-  color: #1a1a1a;
+  color: var(--ink);
   cursor: pointer;
   padding: 0.25rem;
   box-shadow: none;
 }
 .library-close-btn:hover {
-  background: #e5e2d9;
+  background: var(--border-soft);
   border-radius: 4px;
   transform: none;
   box-shadow: none;
@@ -1535,7 +1535,7 @@ button:disabled {
 }
 
 .upload-dropzone {
-  border: 1px dashed #d1cfc7;
+  border: 1px dashed var(--border);
   border-radius: 8px;
   padding: 2rem 1rem;
   text-align: center;
@@ -1544,7 +1544,7 @@ button:disabled {
   margin-bottom: 2rem;
 }
 .upload-dropzone:hover {
-  background-color: #e5e2d9;
+  background-color: var(--border-soft);
 }
 
 .upload-dropzone-content {
@@ -1552,7 +1552,7 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .drop-title {
@@ -1566,15 +1566,15 @@ button:disabled {
   font-family: "Space Mono", monospace;
   font-size: 0.65rem;
   letter-spacing: 0.1em;
-  color: #7a7a7a;
+  color: var(--muted);
   text-transform: uppercase;
   margin-bottom: 1rem;
 }
 
 .browse-btn {
   background: transparent;
-  color: #1a1a1a;
-  border: 1px solid #1a1a1a;
+  color: var(--ink);
+  border: 1px solid var(--ink);
   border-radius: 6px;
   padding: 0.4rem 1.5rem;
   font-size: 0.75rem;
@@ -1585,8 +1585,8 @@ button:disabled {
   box-shadow: none;
 }
 .browse-btn:hover:not(:disabled) {
-  background: #1a1a1a;
-  color: #fff;
+  background: var(--invert-bg);
+  color: var(--invert-text);
   transform: none;
   box-shadow: none;
 }
@@ -1613,7 +1613,7 @@ button:disabled {
   font-family: "Space Mono", monospace;
   font-size: 0.7rem;
   letter-spacing: 0.15em;
-  color: #7a7a7a;
+  color: var(--muted);
   text-transform: uppercase;
   display: block;
   margin-bottom: 1rem;
@@ -1624,7 +1624,7 @@ button:disabled {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 0;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .indexed-item-details {
@@ -1640,7 +1640,7 @@ button:disabled {
 .indexed-item-meta {
   font-family: "Space Mono", monospace;
   font-size: 0.65rem;
-  color: #7a7a7a;
+  color: var(--muted);
 }
 
 .library-eval-wrapper {
@@ -1649,19 +1649,19 @@ button:disabled {
 }
 .library-eval-wrapper .eval-dashboard {
   background: transparent;
-  border: 1px solid #d1cfc7;
+  border: 1px solid var(--border);
   box-shadow: none;
-  color: #1a1a1a;
+  color: var(--ink);
   margin: 0;
 }
 .library-eval-wrapper .eval-dashboard h4,
 .library-eval-wrapper .eval-dashboard__meta,
 .library-eval-wrapper .eval-metric__label,
 .library-eval-wrapper .eval-metric__value {
-  color: #1a1a1a;
+  color: var(--ink);
 }
 .library-eval-wrapper .eval-metric__bar-track {
-  background: #e5e2d9;
+  background: var(--border-soft);
 }
 
 /* Sidebar closed state */
@@ -1672,6 +1672,9 @@ button:disabled {
 }
 .conversation-sidebar--closed .sidebar-toggle-btn {
   margin-bottom: 0;
+}
+.sidebar-theme-toggle {
+  margin-top: 0.75rem;
 }
 
 /* ── Backdrops (mobile only, see media queries below) ─────────────────── */

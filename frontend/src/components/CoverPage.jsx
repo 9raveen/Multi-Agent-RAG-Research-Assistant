@@ -1,4 +1,5 @@
 import React from "react";
+import ThemeToggle from "./ThemeToggle";
 import "./CoverPage.css";
 
 const TICKER_ITEMS = [
@@ -17,7 +18,7 @@ const TICKER_ITEMS = [
   "VOL. 01",
 ];
 
-export default function CoverPage({ onEnterWorkspace }) {
+export default function CoverPage({ onEnterWorkspace, theme, onToggleTheme }) {
   const tickerText = TICKER_ITEMS.join(" \u00B7 ") + " \u00B7 ";
 
   return (
@@ -31,9 +32,12 @@ export default function CoverPage({ onEnterWorkspace }) {
           <a href="#workflow">WORKFLOW</a>
           <a href="#manifesto">MANIFESTO</a>
         </div>
-        <button className="cover-btn-dark" onClick={onEnterWorkspace}>
-          Enter workspace &rarr;
-        </button>
+        <div className="cover-nav-actions">
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <button className="cover-btn-dark" onClick={onEnterWorkspace}>
+            Enter workspace &rarr;
+          </button>
+        </div>
       </nav>
 
       <div className="cover-ticker">

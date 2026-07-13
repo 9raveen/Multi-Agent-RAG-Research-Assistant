@@ -1,8 +1,8 @@
 /* CoverPage.css */
 
 .cover-page {
-  background-color: #f4f2eb;
-  color: #1a1a1a;
+  background-color: var(--bg);
+  color: var(--ink);
   min-height: 100vh;
   font-family: "Inter", sans-serif;
   display: flex;
@@ -14,7 +14,7 @@
 .cover-page h2,
 .cover-page h3,
 .cover-page h4 {
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 /* Typography utilities */
@@ -35,7 +35,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #7a7a7a;
+  color: var(--muted);
   display: block;
 }
 
@@ -45,7 +45,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 3rem;
-  border-bottom: 1px solid #e5e2d9;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.cover-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .cover-logo {
@@ -53,7 +59,7 @@
   font-size: 1.15rem;
   letter-spacing: 0.1em;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -87,7 +93,7 @@
   font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-decoration: none;
-  color: #1a1a1a;
+  color: var(--ink);
   font-weight: 700;
   text-transform: uppercase;
   transition: opacity 0.2s ease;
@@ -98,8 +104,8 @@
 }
 
 .cover-btn-dark {
-  background: #000000;
-  color: #ffffff;
+  background: var(--invert-bg);
+  color: var(--invert-text);
   border: none;
   border-radius: 9999px;
   padding: 0.75rem 1.5rem;
@@ -113,7 +119,7 @@
 }
 
 .cover-btn-dark:hover {
-  background: #333333;
+  background: var(--invert-bg-hover);
   transform: translateY(-1px);
 }
 
@@ -129,7 +135,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #1a1a1a;
+  color: var(--ink);
   cursor: pointer;
   padding: 0.5rem;
 }
@@ -139,17 +145,17 @@
 
 /* Ticker */
 .cover-ticker {
-  background-color: #f4f2eb;
-  border-bottom: 1px solid #e5e2d9;
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--border-soft);
   padding: 1rem 0;
   display: flex;
   align-items: center;
   overflow: hidden;
   white-space: nowrap;
   font-family: "Space Mono", monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.75em;
-  color: #4a4a45;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-soft);
   font-weight: 700;
 }
 
@@ -185,7 +191,7 @@
   padding: 6rem 3rem;
   gap: 4rem;
   align-items: center;
-  border-bottom: 1px solid #e5e2d9;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .hero-title {
@@ -200,7 +206,7 @@
 .hero-description {
   font-size: 1.125rem;
   line-height: 1.6;
-  color: #4a4a4a;
+  color: var(--ink-soft);
   margin-bottom: 3rem;
   max-width: 480px;
 }
@@ -222,7 +228,7 @@
   flex-direction: column;
   width: 100%;
   max-width: 550px;
-  border: 1px solid #d1cfc7;
+  border: 1px solid var(--border);
   border-radius: 2px;
 }
 
@@ -230,8 +236,10 @@
   font-family: "Space Mono", monospace;
   font-size: 0.85rem;
   letter-spacing: 0.15em;
-  color: #1a1a1a; /* Text in the new screenshot looks quite dark, let's use dark gray/black */
-  border-top: 1px solid #d1cfc7;
+  color: var(
+    --ink
+  ); /* Text in the new screenshot looks quite dark, let's use dark gray/black */
+  border-top: 1px solid var(--border);
   padding: 1.25rem 1.5rem;
   display: flex;
   justify-content: space-between;
@@ -250,7 +258,7 @@
 .features-section {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  border-bottom: 1px solid #e5e2d9;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .feature-card {
@@ -258,18 +266,18 @@
 }
 
 .border-left {
-  border-left: 1px solid #e5e2d9;
+  border-left: 1px solid var(--border-soft);
 }
 
 .border-right {
-  border-right: 1px solid #e5e2d9;
+  border-right: 1px solid var(--border-soft);
 }
 
 .feature-label {
   font-family: "Space Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 0.15em;
-  color: #7a7a7a;
+  color: var(--muted);
   margin-bottom: 2rem;
   display: block;
 }
@@ -286,7 +294,7 @@
 }
 
 .feature-desc {
-  color: #4a4a4a;
+  color: var(--ink-soft);
   line-height: 1.5;
   font-size: 0.95rem;
 }
@@ -294,7 +302,7 @@
 /* Workflow Section */
 .workflow-section {
   padding: 6rem 3rem;
-  border-bottom: 1px solid #e5e2d9;
+  border-bottom: 1px solid var(--border-soft);
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4rem;
@@ -316,7 +324,7 @@
 }
 
 .workflow-step {
-  border-top: 1px solid #1a1a1a;
+  border-top: 1px solid var(--ink);
   padding-top: 1.5rem;
 }
 
@@ -334,7 +342,7 @@
 }
 
 .step-desc {
-  color: #4a4a4a;
+  color: var(--ink-soft);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -345,7 +353,7 @@
   display: grid;
   grid-template-columns: 1fr 2.5fr;
   gap: 2rem;
-  border-bottom: 1px solid #e5e2d9;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .manifesto-label {
@@ -373,11 +381,11 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #7a7a7a;
+  color: var(--muted);
 }
 
 .author-star {
-  color: #1a1a1a;
+  color: var(--ink);
   font-size: 1.2rem;
 }
 
@@ -390,7 +398,7 @@
   font-family: "Space Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 0.1em;
-  color: #7a7a7a;
+  color: var(--muted);
 }
 
 /* Responsive adjustments */
@@ -433,7 +441,7 @@
   .border-left,
   .border-right {
     border: none;
-    border-top: 1px solid #e5e2d9;
+    border-top: 1px solid var(--border-soft);
   }
 
   .hero-section {

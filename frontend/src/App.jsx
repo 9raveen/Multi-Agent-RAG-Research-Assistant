@@ -7,6 +7,7 @@ import UploadPanel from "./components/UploadPanel";
 import ChatPanel from "./components/ChatPanel";
 import ConversationSidebar from "./components/ConversationSidebar";
 import EvaluationDashboard from "./components/EvaluationDashboard";
+import ThemeToggle from "./components/ThemeToggle";
 import "./App.css";
 
 export default function App() {
@@ -23,6 +24,26 @@ export default function App() {
   // New UI states
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+
+  // Theme: persisted in localStorage, falls back to the OS-level
+  // preference on first visit if the user hasn't picked one yet.
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "light";
+    const saved = window.localStorage.getItem("mara-theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    window.localStorage.setItem("mara-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  }, []);
 
   // On phones/small tablets, start with the sidebar collapsed so it
   // doesn't cover the whole screen on first load. Desktop keeps it open.
@@ -73,9 +94,21 @@ export default function App() {
 
   if (!user) {
     if (showAuth) {
-      return <AuthPage onBack={() => setShowAuth(false)} />;
+      return (
+        <AuthPage
+          onBack={() => setShowAuth(false)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      );
     }
-    return <CoverPage onEnterWorkspace={() => setShowAuth(true)} />;
+    return (
+      <CoverPage
+        onEnterWorkspace={() => setShowAuth(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
   return (
@@ -97,6 +130,8 @@ export default function App() {
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
           onOpenLibrary={() => setRightPanelOpen(true)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
 
         <div className="dashboard-main">
