@@ -421,6 +421,10 @@
     display: none; /* Hide nav links on mobile */
   }
 
+  .cover-nav {
+    padding: 1.25rem 1.5rem;
+  }
+
   .features-section,
   .workflow-grid {
     grid-template-columns: 1fr;
@@ -430,5 +434,92 @@
   .border-right {
     border: none;
     border-top: 1px solid #e5e2d9;
+  }
+
+  .hero-section {
+    padding: 3rem 1.5rem;
+    gap: 2.5rem;
+  }
+
+  .hero-title {
+    font-size: 2.75rem;
+  }
+
+  .hero-description {
+    max-width: 100%;
+  }
+
+  .hero-actions {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .feature-card {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .workflow-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .workflow-title {
+    font-size: 2.25rem;
+  }
+
+  .manifesto-section {
+    padding: 3rem 1.5rem;
+    grid-template-columns: 1fr;
+  }
+
+  .manifesto-quote {
+    font-size: 1.75rem;
+  }
+
+  .cover-footer {
+    padding: 1.5rem;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .cover-nav {
+    padding: 1rem;
+  }
+
+  .cover-logo {
+    font-size: 1rem;
+  }
+
+  .cover-btn-dark {
+    padding: 0.6rem 1.1rem;
+    font-size: 0.75rem;
+  }
+
+  .cover-ticker {
+    font-size: 0.65rem;
+  }
+
+  .hero-title {
+    font-size: 2.1rem;
+  }
+
+  .hero-description {
+    font-size: 1rem;
+  }
+
+  .illustration-caption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .feature-title {
+    font-size: 1.6rem;
+  }
+
+  .manifesto-quote {
+    font-size: 1.4rem;
   }
 }
