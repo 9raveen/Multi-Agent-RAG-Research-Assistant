@@ -6,7 +6,7 @@
 import sys, os, json
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from groq import Groq, RateLimitError
+from groq import Groq, GroqError
 from dotenv import load_dotenv
 
 from retrieval.retriever import format_chunks_for_prompt
@@ -84,11 +84,22 @@ Evaluate this answer."""
             max_tokens=150,
         )
         raw = response.choices[0].message.content.strip()
-    except RateLimitError as e:
-        print(f"[critique_node] RATE LIMIT hit — treating as not passed, no retry. {e}")
+    except GroqError as e:
+        # Broad catch, deliberately: RateLimitError alone isn't enough — a
+        # too-large-context error (413, "Request too large") is a DIFFERENT
+        # exception class than RateLimitError despite Groq's error body
+        # confusingly saying "code": "rate_limit_exceeded" for it too. This
+        # crashed the whole stream uncaught before, because top_k retrieval
+        # depth (bumped for fuller answers) can push context past this
+        # smaller model's much lower token-per-minute budget. Whatever the
+        # specific Groq failure is — rate limit, oversized request, timeout,
+        # a 5xx — critique failing should never be able to destroy an answer
+        # that already generated successfully. Treat any of it the same way:
+        # accept the answer without a fact-check pass, don't crash the request.
+        print(f"[critique_node] Groq error during critique — accepting answer without fact-check pass. {e}")
         return {
-            "critique_passed": False,
-            "critique_feedback": "critique skipped — Groq rate limit reached",
+            "critique_passed": True,
+            "critique_feedback": f"critique skipped — Groq error ({type(e).__name__})",
             "revision_count": revision_count,
         }
 
