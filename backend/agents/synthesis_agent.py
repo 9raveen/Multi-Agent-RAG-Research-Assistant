@@ -1,5 +1,5 @@
 # synthesis_agent.py
-import sys, os
+import sys, os, time
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from groq import Groq, RateLimitError
@@ -113,7 +113,19 @@ def _build_summary_prompt(chunks: list[dict]) -> tuple[str, str]:
 
     batches = _batch_chunks(chunks)
     print(f"[summarize] document too large for single-shot ({total_words} words) — map-reduce across {len(batches)} batches")
-    batch_summaries = [_summarize_batch(b) for b in batches]
+
+    # Small delay between calls (not after the last one) — spaces out what
+    # would otherwise be a tight burst of back-to-back Groq requests. Free-
+    # tier rate limits are often requests-per-minute, not just tokens-per-
+    # minute, so even small/fast calls can trip a limit if fired in a burst.
+    # Cheap insurance: adds a few seconds total for a large document, in
+    # exchange for real robustness against exactly the 429 you just hit.
+    batch_summaries = []
+    for i, batch in enumerate(batches):
+        batch_summaries.append(_summarize_batch(batch))
+        if i < len(batches) - 1:
+            time.sleep(1.5)
+
     combined = "\n\n".join(f"Section {i + 1} summary:\n{s}" for i, s in enumerate(batch_summaries))
     user_content = f"{combined}\n\nCombine these section summaries into one comprehensive document summary."
     return REDUCE_SYSTEM_PROMPT, user_content

@@ -1187,6 +1187,17 @@ button:disabled {
   padding-top: 1rem;
   border-top: 1px solid var(--border);
   display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebar-footer-toggle-row {
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar-footer-user-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
 }

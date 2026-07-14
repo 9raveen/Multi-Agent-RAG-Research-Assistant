@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useAuth } from "../context/useAuth";
-import ThemeToggle from "./ThemeToggle";
+import BB8Toggle from "./BB8Toggle";
 import "./AuthPage.css";
 
 export default function AuthPage({ onBack, theme, onToggleTheme }) {
@@ -52,7 +52,7 @@ export default function AuthPage({ onBack, theme, onToggleTheme }) {
               &larr; BACK TO COVER
             </button>
           )}
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <BB8Toggle theme={theme} onToggle={onToggleTheme} size="sm" />
         </div>
         <div className="auth-left-content">
           <span className="library-card-label">THE LIBRARY CARD</span>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getConversations } from "../api";
 import ThemeToggle from "./ThemeToggle";
+import BB8Toggle from "./BB8Toggle";
 
 export default function ConversationSidebar({
   activeConversationId,
@@ -198,35 +199,39 @@ export default function ConversationSidebar({
 
       {user && (
         <div className="sidebar-footer">
-          <div className="user-info">
-            <div className="user-avatar">
-              {user.email.charAt(0).toUpperCase()}
-            </div>
-            <div className="user-details">
-              <span className="user-email-text">{user.email}</span>
-              <span className="user-status-text">SIGNED IN</span>
-            </div>
+          <div className="sidebar-footer-toggle-row">
+            <BB8Toggle theme={theme} onToggle={onToggleTheme} size="sm" />
           </div>
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-          <button
-            type="button"
-            className="logout-icon-btn"
-            onClick={onLogout}
-            title="Log Out"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          <div className="sidebar-footer-user-row">
+            <div className="user-info">
+              <div className="user-avatar">
+                {user.email.charAt(0).toUpperCase()}
+              </div>
+              <div className="user-details">
+                <span className="user-email-text">{user.email}</span>
+                <span className="user-status-text">SIGNED IN</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="logout-icon-btn"
+              onClick={onLogout}
+              title="Log Out"
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </button>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import React from "react";
-import ThemeToggle from "./ThemeToggle";
+import BB8Toggle from "./BB8Toggle";
 import "./CoverPage.css";
 
 const TICKER_ITEMS = [
@@ -33,7 +33,7 @@ export default function CoverPage({ onEnterWorkspace, theme, onToggleTheme }) {
           <a href="#manifesto">MANIFESTO</a>
         </div>
         <div className="cover-nav-actions">
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <BB8Toggle theme={theme} onToggle={onToggleTheme} size="sm" />
           <button className="cover-btn-dark" onClick={onEnterWorkspace}>
             Enter workspace &rarr;
           </button>
