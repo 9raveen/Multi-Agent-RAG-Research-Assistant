@@ -1,6 +1,6 @@
 # Multi-Agent RAG Research Assistant
 
-A production-grade, multi-agent Retrieval-Augmented Generation system that ingests PDFs, answers questions with cited sources, and self-corrects low-quality answers through an automated critique-and-retry loop — evaluated end-to-end with RAGAS and deployed live.
+A production-grade, multi-user Retrieval-Augmented Generation system that ingests PDFs, answers questions with cited sources, self-corrects low-quality answers through an automated critique-and-retry loop, and persists conversation history per authenticated user — evaluated end-to-end with RAGAS and deployed live.
 
 **Live demo:** https://multi-agent-rag-research-assistant.vercel.app
 **Backend API docs:** https://9raveen-multi-agent-rag-research-assistant-api.hf.space/docs
@@ -13,6 +13,8 @@ A production-grade, multi-agent Retrieval-Augmented Generation system that inges
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Key Engineering Decisions](#key-engineering-decisions)
+- [Multi-User Auth & Persistence](#multi-user-auth--persistence)
+- [Document Summarization (Map-Reduce)](#document-summarization-map-reduce)
 - [Evaluation Results (RAGAS)](#evaluation-results-ragas)
 - [Real Bugs Found & Fixed](#real-bugs-found--fixed)
 - [Deployment Journey](#deployment-journey)
@@ -25,7 +27,7 @@ A production-grade, multi-agent Retrieval-Augmented Generation system that inges
 
 ## Problem Statement
 
-Upload a PDF, ask any question about it, and get a cited, verified answer — grounded strictly in the document's content, with automatic self-correction when the first-pass answer is incomplete or unsupported.
+Upload a PDF, ask any question about it, and get a cited, verified answer — grounded strictly in the document's content, with automatic self-correction when the first-pass answer is incomplete or unsupported. Documents, conversations, and message history persist per user account, so work isn't lost between sessions.
 
 Target use cases: legal contract review, financial report synthesis, academic literature review, enterprise knowledge bases.
 
@@ -33,88 +35,128 @@ Target use cases: legal contract review, financial report synthesis, academic li
 
 ## Architecture
 
-The core of the system is a **LangGraph multi-agent pipeline** with a conditional retry loop. Every query flows through three specialized agents, each with a single responsibility:
+The core of the system is a **LangGraph multi-agent pipeline** with a conditional retry loop and a separate summarization path. Every query flows through specialized agents, each with a single responsibility:
 
 ```mermaid
 flowchart TD
-    START([User Query]) --> RESEARCH[Research Agent<br/>Retrieves top-k chunks from Qdrant<br/>Scoped to selected document]
+    START([User Query]) --> DETECT{Summary<br/>request?}
+    DETECT -->|Yes| SCROLL[Fetch ALL chunks<br/>for document via Qdrant scroll]
+    SCROLL --> MAPREDUCE[Map-Reduce Summarization<br/>Groq Llama-3.3-70B<br/>batches summarized, then combined]
+    MAPREDUCE --> DONE
+    DETECT -->|No| RESEARCH[Research Agent<br/>Retrieves top-k chunks from Qdrant<br/>Scoped to document + user_id]
     RESEARCH --> SYNTH[Synthesis Agent<br/>Groq Llama-3.3-70B<br/>Answers using ONLY retrieved context]
     SYNTH --> CRITIQUE[Critique Agent<br/>Groq Llama-3.1-8B<br/>Checks: grounded? complete? scoped correctly?]
     CRITIQUE --> DECISION{Passed?}
-    DECISION -->|Yes| DONE([Return Verified Answer])
-    DECISION -->|No, revisions < 3| WIDEN[Widen top_k 5→8<br/>Retry with original query]
+    DECISION -->|Yes| DONE([Return Verified Answer<br/>+ save to Postgres])
+    DECISION -->|No, revisions < 3| WIDEN[Widen top_k 8→10<br/>Retry with original query]
     WIDEN --> RESEARCH
     DECISION -->|No, revisions = 3| GIVEUP([Return Best-Effort Answer<br/>Unverified badge])
-    DECISION -->|Rate limited or<br/>stale/identical answer| GIVEUP
+    DECISION -->|Rate limited, stale answer,<br/>or any Groq API error| GIVEUP
 
     style RESEARCH fill:#6366f1,color:#fff
     style SYNTH fill:#6366f1,color:#fff
     style CRITIQUE fill:#6366f1,color:#fff
+    style MAPREDUCE fill:#6366f1,color:#fff
     style DONE fill:#22c55e,color:#fff
     style GIVEUP fill:#f59e0b,color:#000
 ```
 
 ### Agent Responsibilities
 
-| Agent         | Model                                  | Responsibility                                                                                                               |
-| ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Research**  | fastembed (ONNX, local) + Qdrant Cloud | Embeds query, retrieves top-k semantically similar chunks, optionally scoped to a single uploaded document                   |
-| **Synthesis** | Groq `llama-3.3-70b-versatile`         | Generates an answer using _only_ the retrieved context — explicitly instructed to say "not found" rather than hallucinate    |
-| **Critique**  | Groq `llama-3.1-8b-instant`            | Fact-checks the answer against retrieved context; returns structured JSON (`passed`, `feedback`); routes retry or completion |
+| Agent             | Model                                  | Responsibility                                                                                                                                             |
+| ----------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Research**      | fastembed (ONNX, local) + Qdrant Cloud | Embeds query, retrieves top-k semantically similar chunks, scoped to a document _and_ the authenticated user's own vectors                                 |
+| **Synthesis**     | Groq `llama-3.3-70b-versatile`         | Generates a thorough answer using _only_ the retrieved context — instructed to say "not found" rather than hallucinate                                     |
+| **Critique**      | Groq `llama-3.1-8b-instant`            | Fact-checks the answer against retrieved context; returns structured JSON (`passed`, `feedback`); routes retry or completion; skipped for summary requests |
+| **Summarization** | Groq `llama-3.3-70b-versatile`         | Map-reduce whole-document summary — bypasses top-k similarity search entirely (see [dedicated section](#document-summarization-map-reduce))                |
 
 ### Retry & Safety Logic
 
-The retry loop isn't a naive "try again" — it has three independent safety mechanisms to prevent wasted compute and infinite loops:
+The retry loop isn't a naive "try again" — it has multiple independent safety mechanisms to prevent wasted compute and infinite loops:
 
-1. **Rate-limit short-circuit** — if Groq's API returns a rate-limit error, the pipeline immediately routes to `give_up` rather than retrying into a guaranteed second failure.
+1. **Rate-limit / API-error short-circuit** — if Groq's API returns _any_ error during critique (rate limit, oversized-context 413, timeout, 5xx), the pipeline accepts the already-generated answer rather than crashing the request or blindly retrying into a guaranteed second failure.
 2. **Staleness detection** — if synthesis produces an identical answer to the previous attempt, retrying again won't help (only critique's non-deterministic verdict would change), so the pipeline gives up rather than burning another full cycle.
 3. **Hard cap** — `MAX_REVISIONS = 3` regardless of the above, guaranteeing bounded latency and cost per query.
+4. **Summary requests skip critique entirely** — a full-document context (70+ chunks) has no smaller subset that's still a meaningful fact-check target, and would blow through critique's token budget regardless.
 
 ---
 
 ## Tech Stack
 
-| Layer               | Technology                                             | Why                                                                                                                            |
-| ------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Agent Orchestration | **LangGraph**                                          | Explicit state machine for the research→synthesis→critique→retry loop                                                          |
-| LLM (synthesis)     | **Groq** `llama-3.3-70b-versatile`                     | Fast inference, strong instruction-following for grounded synthesis                                                            |
-| LLM (critique)      | **Groq** `llama-3.1-8b-instant`                        | Cheaper/faster for a binary pass/fail classification task — synthesis quality doesn't require 70B-scale reasoning here         |
-| Embeddings          | **fastembed** (`BAAI/bge-small-en-v1.5`, ONNX runtime) | No PyTorch dependency — critical for fitting within constrained hosting memory (see [Deployment Journey](#deployment-journey)) |
-| Vector Database     | **Qdrant Cloud**                                       | Managed, filterable vector search with payload indexing for document-scoped retrieval                                          |
-| Backend             | **FastAPI**                                            | Async-friendly, auto-generated OpenAPI docs, clean Pydantic validation                                                         |
-| Frontend            | **React (Vite)**                                       | Fast dev loop, no unnecessary framework overhead for this scope                                                                |
-| PDF Parsing         | **PyMuPDF (fitz)**                                     | Column-aware reading order, font-size header detection, table-aware extraction                                                 |
-| Evaluation          | **RAGAS**                                              | Industry-standard RAG metrics: faithfulness, answer relevancy, context precision/recall                                        |
-| Backend Hosting     | **Hugging Face Spaces** (Docker)                       | See migration story below                                                                                                      |
-| Frontend Hosting    | **Vercel**                                             | Zero-config Vite deploys                                                                                                       |
+| Layer                           | Technology                                             | Why                                                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent Orchestration             | **LangGraph**                                          | Explicit state machine for the research→synthesis→critique→retry loop                                                                                      |
+| LLM (synthesis + summarization) | **Groq** `llama-3.3-70b-versatile`                     | Fast inference, strong instruction-following for grounded synthesis and map-reduce summarization                                                           |
+| LLM (critique)                  | **Groq** `llama-3.1-8b-instant`                        | Cheaper/faster for a binary pass/fail classification task — synthesis quality doesn't require 70B-scale reasoning here                                     |
+| Embeddings                      | **fastembed** (`BAAI/bge-small-en-v1.5`, ONNX runtime) | No PyTorch dependency — critical for fitting within constrained hosting memory (see [Deployment Journey](#deployment-journey))                             |
+| Vector Database                 | **Qdrant Cloud**                                       | Managed, filterable vector search with payload indexing for per-user, per-document scoped retrieval                                                        |
+| Relational Database             | **Neon (Postgres, serverless)**                        | Users, documents, conversations, messages — vector DB isn't the right store for relational/ownership data (see below)                                      |
+| Auth                            | **JWT (Bearer token)**                                 | Self-rolled, `passlib`/`bcrypt` password hashing, `python-jose` signing — see [Multi-User Auth](#multi-user-auth--persistence) for why Bearer over cookies |
+| Backend                         | **FastAPI** + **SQLAlchemy 2.0 (async)**               | Async-friendly, auto-generated OpenAPI docs, clean Pydantic validation                                                                                     |
+| Frontend                        | **React (Vite)**                                       | Fast dev loop, no unnecessary framework overhead for this scope                                                                                            |
+| PDF Parsing                     | **PyMuPDF (fitz)**                                     | Column-aware reading order, font-size header detection, table-aware extraction                                                                             |
+| Evaluation                      | **RAGAS**                                              | Industry-standard RAG metrics: faithfulness, answer relevancy, context precision/recall                                                                    |
+| Backend Hosting                 | **Hugging Face Spaces** (Docker)                       | See migration story below                                                                                                                                  |
+| Frontend Hosting                | **Vercel**                                             | Zero-config Vite deploys                                                                                                                                   |
 
 ---
 
 ## Key Engineering Decisions
 
-### 1. Document-Scoped Retrieval (Contamination Prevention)
+### 1. Document-Scoped, User-Scoped Retrieval (Contamination + Isolation Prevention)
 
 Early testing surfaced a real bug: with multiple PDFs in one Qdrant collection, an unrelated query could silently retrieve chunks from the _wrong_ document — producing a plausible-looking but contaminated answer (real citations, real page numbers, wrong source). This is worse than an obvious hallucination because it's harder to catch.
 
-**Fix:** every query can be scoped to a single `source_file` via a Qdrant payload filter (`FieldCondition` + `MatchValue`), with an explicit payload index (`create_payload_index`) required for Qdrant Cloud to support the filter efficiently.
+**Fix:** every query can be scoped to a single `source_file` via a Qdrant payload filter, with an explicit payload index required for Qdrant Cloud to support the filter efficiently. Once multi-user auth was added, the same mechanism was extended with a second, AND'd filter on `user_id` — so one user's documents are structurally invisible to another user's queries, not just hidden by the UI.
 
 ### 2. Table-Aware Ingestion
 
-PDF tables are detected via PyMuPDF's `find_tables()`, serialized to Markdown (not flattened prose), and chunked separately from surrounding text — with a `min_rows` threshold to reject false-positive single-row detections common in slide-deck PDFs. Multi-page table continuations (a table ending near a page bottom, continuing headerless on the next page) are detected and merged into one logical table.
+PDF tables are detected via PyMuPDF's `find_tables()`, serialized to Markdown (not flattened prose), and chunked separately from surrounding text — with a `min_rows` threshold to reject false-positive single-row detections common in slide-deck PDFs. Multi-page table continuations are detected and merged into one logical table.
 
 ### 3. Deterministic Point IDs
 
-Qdrant point IDs are derived via `md5(chunk_id) → UUID` rather than `uuid.uuid4()`. This makes re-ingesting the same PDF idempotent — re-running ingestion overwrites existing vectors instead of silently accumulating duplicates (a real bug caught during development).
+Qdrant point IDs are derived via `md5(chunk_id) → UUID` rather than `uuid.uuid4()`. This makes re-ingesting the same PDF idempotent — re-running ingestion overwrites existing vectors instead of silently accumulating duplicates.
 
 ### 4. Batched Embedding + Upload
 
-Embedding and uploading all chunks from a document in a single batch caused out-of-memory crashes on larger PDFs once deployed to a memory-constrained host. Fixed by processing chunks in small batches (4–8 at a time) with explicit garbage collection between batches, bounding peak memory regardless of document size.
+Embedding and uploading all chunks from a document in a single batch caused out-of-memory crashes on larger PDFs once deployed to a memory-constrained host. Fixed by processing chunks in small batches (4–8 at a time) with explicit garbage collection between batches.
+
+### 5. Server-Authoritative Chat History
+
+Multi-turn context was initially client-supplied (the frontend sent the running conversation array with every request). Switched to server-authoritative: the backend loads prior turns from Postgres via `conversation_id`, ignoring any `chat_history` the client sends. This removes an entire class of bugs where the frontend's view of history could drift from what's actually stored (e.g. after a page reload), and means any future client automatically gets correct behavior without reimplementing history-reconstruction logic.
+
+---
+
+## Multi-User Auth & Persistence
+
+Phase 8 of this project. Three layers, each solving a distinct problem:
+
+**1. JWT Authentication — Bearer token, not httpOnly cookie.**
+The original design used an httpOnly cookie (the more common, slightly more XSS-resistant pattern). During deployment, this surfaced a genuine **Hugging Face Spaces platform bug**: HF's front proxy answers CORS preflight (`OPTIONS`) requests itself, and its response is missing the `Access-Control-Allow-Credentials` header — which silently breaks cookie-based cross-origin auth (Vercel frontend → HF Spaces backend) no matter how correctly the app's own CORS config is set. Confirmed via direct `curl`/PowerShell preflight testing and cross-referenced against [an open, unresolved HF community thread](https://discuss.huggingface.co/) reporting the identical symptom on an identical stack. **Fix:** switched to a Bearer token in the `Authorization` header, stored in `sessionStorage` — this never triggers the browser's credentialed-request preflight check, sidestepping the platform bug entirely rather than depending on HF to fix it.
+
+**2. Neon Postgres — relational data, kept separate from Qdrant.**
+Qdrant stores vectors; it's the wrong tool for "list all conversations for user X" or "who owns this document." Four tables: `users`, `documents`, `conversations`, `messages`. Async SQLAlchemy 2.0, `NullPool` connection strategy (not the default connection pool) — required because the sync `/query` and `/query/stream` FastAPI routes call `asyncio.run()` internally to bridge into async DB calls, and each call spins up a fresh event loop; a pooled connection created in one loop can't be reused in the next (`asyncpg` raises "Task attached to a different loop" otherwise — a real bug caught during testing, not a theoretical one).
+
+**3. Qdrant ownership tagging.**
+Every embedded point is stamped with `user_id` alongside the existing `source_file` field, with its own payload index. Retrieval filters AND both conditions, so cross-user document access is prevented structurally, not just hidden in the UI — verified by testing with two separate accounts and confirming zero cross-visibility.
+
+---
+
+## Document Summarization (Map-Reduce)
+
+Standard top-k similarity retrieval is the _wrong tool_ for "summarize this document": the query is topically generic, so vector search has no strong signal for what's important and returns some semantically-average handful of chunks — not comprehensive document coverage.
+
+**Detection:** keyword-based (`"summarize"`, `"tl;dr"`, `"what is this document about"`, etc.) against the user's original query — cheap, deterministic, no extra LLM call. Only triggers when scoped to one specific document.
+
+**Retrieval:** `retrieve_all_chunks()` uses Qdrant's `scroll()` API — pagination through _every_ point matching the filter, not nearest-neighbor search — returned in original reading order via `chunk_index`.
+
+**Summarization:** single-shot if the document is short enough (~4,000 words) to fit comfortably in one prompt; otherwise **map-reduce** — batches of chunks (grouped by cumulative word count, not chunk count) are summarized individually, then those batch summaries are combined into one final, coherent summary. Batch size was tuned specifically to reduce Groq free-tier rate-limit pressure: a naive implementation made 18+ sequential API calls for a 22K-word document, which reliably triggered rate limits; widening the batch size to ~3,500 words cut that to 7-8 calls, plus a small inter-batch delay to avoid bursting.
 
 ---
 
 ## Evaluation Results (RAGAS)
 
-Benchmarked against a 10-question set spanning single-hop factual questions, multi-hop comparative questions, and negative/out-of-scope questions (to verify the system correctly refuses to answer when information isn't present — directly testing the contamination-prevention fix above).
+Benchmarked against a 10-question set spanning single-hop factual questions, multi-hop comparative questions, and negative/out-of-scope questions (to verify the system correctly refuses to answer when information isn't present).
 
 **Baseline run (8/10 scoreable; 2 excluded due to Groq API rate-limiting, not pipeline failure):**
 
@@ -129,51 +171,68 @@ Benchmarked against a 10-question set spanning single-hop factual questions, mul
 
 - Judge LLM: Groq `llama-3.1-8b-instant` via OpenAI-compatible endpoint (workaround for a confirmed upstream `ragas` provider-dispatch bug — see below)
 - Embeddings for judge: local `sentence-transformers` (evaluation-only; not used in the live serving path)
-- Questions that failed due to infrastructure issues (API rate limits) are explicitly excluded from scoring and reported separately — conflating infrastructure failure with retrieval/synthesis quality would misrepresent the pipeline's actual performance
+- Questions that failed due to infrastructure issues are explicitly excluded from scoring and reported separately
+
+> **Note:** `top_k` was later widened (5→8, 8→10) to fix overly brief synthesis answers. This baseline predates that change and should be re-run to confirm whether `context_precision` shifted — noted here deliberately rather than silently presenting a stale number as current.
 
 ---
 
 ## Real Bugs Found & Fixed
 
-This project surfaced several genuine bugs — in the codebase, in third-party libraries, and in infrastructure — each diagnosed and fixed rather than worked around superficially.
-
-| Bug                                                                                                        | Diagnosis                                                                                                                                                           | Fix                                                                                                                                                                  |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Cross-document contamination**                                                                           | Querying one document silently retrieved chunks from an unrelated document in the same collection                                                                   | Added `document_scope` filtering end-to-end (state → API → retriever → Qdrant payload filter)                                                                        |
-| **Duplicate Qdrant points on re-ingestion**                                                                | Random `uuid.uuid4()` point IDs meant every re-run created new points instead of overwriting                                                                        | Deterministic point IDs via `md5(chunk_id)`                                                                                                                          |
-| **`ragas` import crash** ([upstream issue #2741](https://github.com/explodinggradients/ragas/issues/2741)) | `ragas.llms.base` unconditionally imports `ChatVertexAI` from a module removed in `langchain_community 0.4.x`                                                       | Injected a stub module into `sys.modules` before importing `ragas`                                                                                                   |
-| **`ragas` Groq provider bug**                                                                              | `ragas`'s `"groq"` provider branch incorrectly assumes an Anthropic-shaped client (`client.messages.create`)                                                        | Routed through the OpenAI-compatible provider branch, pointed at Groq's OpenAI-compatible endpoint                                                                   |
-| **Retry loop cascading into rate limits**                                                                  | A single question hitting a rate limit would retry up to 3× into the _same_ guaranteed failure, needlessly amplifying quota exhaustion                              | Added a `rate_limited` state flag that short-circuits directly to `give_up`, skipping retry                                                                          |
-| **Non-deterministic critique causing wasted retries**                                                      | Even at `temperature=0.0`, Groq's hosted inference isn't fully deterministic — identical synthesis output could receive different critique verdicts across attempts | Added staleness detection: if synthesis produces an unchanged answer, stop retrying rather than gambling on critique noise                                           |
-| **Qdrant Cloud filter requires explicit index**                                                            | `query_points()` with a `Filter` on `source_file` returned `400 Bad Request` on Qdrant Cloud (worked locally)                                                       | Added `create_payload_index()` (idempotent) during collection setup                                                                                                  |
-| **Render OOM on document upload**                                                                          | PyTorch-backed `sentence-transformers`, loaded twice (once per module), exceeded Render's 512MB free-tier ceiling                                                   | Migrated to `fastembed` (ONNX runtime, no PyTorch dependency), deduplicated to a single lazy-loaded shared instance, batched embedding+upload — see full story below |
+| Bug                                                                                                  | Diagnosis                                                                                                                                                                                                                                                                                      | Fix                                                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Cross-document contamination**                                                                     | Querying one document silently retrieved chunks from an unrelated document in the same collection                                                                                                                                                                                              | Added `document_scope` filtering end-to-end                                                                                                                                                |
+| **Duplicate Qdrant points on re-ingestion**                                                          | Random `uuid.uuid4()` point IDs meant every re-run created new points instead of overwriting                                                                                                                                                                                                   | Deterministic point IDs via `md5(chunk_id)`                                                                                                                                                |
+| **`ragas` import crash** ([upstream #2741](https://github.com/explodinggradients/ragas/issues/2741)) | `ragas.llms.base` unconditionally imports a class removed in a newer `langchain_community`                                                                                                                                                                                                     | Injected a stub module into `sys.modules` before importing `ragas`                                                                                                                         |
+| **`ragas` Groq provider bug**                                                                        | `ragas`'s `"groq"` provider branch assumes an Anthropic-shaped client                                                                                                                                                                                                                          | Routed through the OpenAI-compatible provider branch instead                                                                                                                               |
+| **Retry loop cascading into rate limits**                                                            | A single question hitting a rate limit would retry into the _same_ guaranteed failure                                                                                                                                                                                                          | Added a `rate_limited` state flag that short-circuits to `give_up`                                                                                                                         |
+| **Qdrant Cloud filter requires explicit index**                                                      | `query_points()` with a `Filter` returned `400` on Qdrant Cloud (worked locally)                                                                                                                                                                                                               | Added `create_payload_index()` during collection setup                                                                                                                                     |
+| **Render OOM on document upload**                                                                    | PyTorch-backed `sentence-transformers` exceeded Render's 512MB free-tier ceiling                                                                                                                                                                                                               | Migrated to `fastembed` (ONNX, no PyTorch)                                                                                                                                                 |
+| **Cross-event-loop DB connection crash**                                                             | `asyncio.run()` inside sync routes reused a pooled connection across different event loops — `asyncpg` raised "Task attached to a different loop"                                                                                                                                              | Switched the async engine to `NullPool` — fresh connection per checkout, nothing persists across loop boundaries                                                                           |
+| **HF Spaces CORS proxy strips credentials header**                                                   | Platform-level bug: HF's proxy answers `OPTIONS` preflight itself, response missing `Access-Control-Allow-Credentials` — breaks cookie auth regardless of backend config                                                                                                                       | Switched auth from httpOnly cookie to Bearer token in `Authorization` header — sidesteps the browser's credentialed-preflight check entirely                                               |
+| **Critique agent crash on oversized context (`413`)**                                                | `top_k` widened for fuller answers also widened critique's input; critique's smaller model has _half_ the token-per-minute budget of the synthesis model despite being "smaller"; the crash wasn't even a `RateLimitError` (a `413`, different exception class) so it went completely uncaught | Broadened exception handling to catch all Groq API errors, not just rate limits; failures degrade gracefully (answer accepted without fact-check) instead of crashing the request          |
+| **Silent hang on DB-unreachable startup**                                                            | No connection timeout configured — a slow/unreachable Neon endpoint hung the whole app's startup indefinitely with zero error or log output                                                                                                                                                    | Added an explicit 15-second connection timeout so this now fails fast with a clear error                                                                                                   |
+| **Force-push overwrote HF Spaces YAML config**                                                       | `git push hf main:main --force` from inside a monorepo pushed the _entire_ repo (wrong root), overwriting HF's required README frontmatter with a plain GitHub README                                                                                                                          | Corrected to `git subtree split --prefix=backend` before pushing — isolates just the backend subtree to the Spaces repo root                                                               |
+| **Frontend chat resetting after first message**                                                      | A `useEffect` reset the visible chat on any `conversationId` change — including the _legitimate_ internal update when a brand-new conversation received its ID from the backend, wiping the just-received answer                                                                               | Separated "parent explicitly loaded a different conversation" from "this conversation just got assigned an ID" via a dedicated `loadKey`, only bumped by explicit sidebar/new-chat actions |
 
 ---
 
 ## Deployment Journey
 
-The deployment phase surfaced a genuine infrastructure constraint worth documenting as an engineering decision, not just a debugging log.
+### Backend memory constraints (Render → Hugging Face Spaces)
 
-1. **Initial deploy target: Render (free tier, 512MB RAM).** The app repeatedly hit out-of-memory crashes on document upload, confirmed via Render's own OOM detector emails.
-2. **Root-caused to:** `sentence-transformers`' PyTorch backend, loaded redundantly across two modules (`embedder.py` and `retriever.py`), each instantiating its own model instance.
-3. **First fix — deduplicate the model load** to a single lazy-loaded singleton shared across modules. Reduced but did not eliminate OOM on larger documents.
-4. **Second fix — batch the embed+upload step** so peak memory scales with batch size, not total document size.
-5. **Third fix — migrate the embedding library from `sentence-transformers` to `fastembed`**, which uses ONNX Runtime instead of full PyTorch — removing the heaviest dependency in the stack entirely.
-6. **Even after all three fixes, Render's 512MB ceiling remained too tight** for the combined footprint of FastAPI + LangGraph + Groq/OpenAI SDKs + fastembed under real document-processing load.
-7. **Final fix — migrated backend hosting to Hugging Face Spaces** (Docker SDK), which provides substantially more RAM on its free tier. Combined with the fastembed migration and a startup-time model preload (so the embedding model loads once during boot, not mid-request), this fully resolved the memory constraint.
+1. **Initial deploy target: Render (free tier, 512MB RAM).** Repeated OOM crashes on document upload.
+2. **Root-caused to:** `sentence-transformers`' PyTorch backend, loaded redundantly across two modules.
+3. **First fix** — deduplicated to a single lazy-loaded singleton. Reduced but didn't eliminate OOM on larger documents.
+4. **Second fix** — batched the embed+upload step so peak memory scales with batch size, not document size.
+5. **Third fix** — migrated from `sentence-transformers` to `fastembed` (ONNX Runtime, no PyTorch).
+6. **Even after all three, Render's 512MB ceiling remained too tight** for the combined footprint under real load.
+7. **Final fix** — migrated backend hosting to Hugging Face Spaces (Docker SDK), with startup-time model preload.
 
-This is presented as a resolved engineering tradeoff: **correct code can still fail under a hard resource ceiling**, and recognizing when to optimize further versus when to change infrastructure is itself a deployment decision worth making deliberately.
+### Cross-origin auth (the Phase 8 deployment saga)
+
+What looked like a simple "add login" feature surfaced a real platform-level bug. Timeline, briefly:
+
+1. Implemented standard httpOnly-cookie JWT auth — worked perfectly in local testing (same-origin, cookie always attached).
+2. Deployed: Vercel frontend, HF Spaces backend — different domains. Signup/login immediately failed with `Failed to fetch`.
+3. **First cause found:** CORS `allow_origins` only listed the production Vercel URL, not `localhost` — fixed for local dev testing.
+4. **Second cause found:** the actual deployed CORS config predated a code push — confirmed via direct `Files` tab inspection on HF Spaces, force-pushed the current code.
+5. **Real cause found**, via direct `OPTIONS` preflight testing (PowerShell `Invoke-WebRequest`, since browser DevTools don't expose enough preflight detail): `Access-Control-Allow-Credentials` was **entirely absent** from the actual preflight response — despite `allow_credentials=True` being correctly set in FastAPI's CORS middleware, and despite that same header being present and correct on the real `POST` response. Isolated to Hugging Face's own reverse proxy answering `OPTIONS` before it ever reached the app — confirmed against a public HF community thread reporting the identical symptom on an identical stack (Docker + Vercel), same week.
+6. **Decision:** rather than wait on an unresolved third-party platform bug, switched the entire auth mechanism from httpOnly cookies to a Bearer token in the `Authorization` header — architecturally sidesteps the bug rather than working around it, and is a legitimate, common pattern for SPA + separate-API deployments in its own right.
+
+This is presented as a resolved engineering tradeoff, same as the Render migration above: **correct code can still fail for reasons entirely outside the codebase**, and recognizing when the fix belongs at the architecture level — not by chasing a platform bug — is itself a deployment decision worth making deliberately.
 
 ---
 
 ## UI Features
 
-Beyond the standard upload/query/answer flow, the frontend surfaces the multi-agent system's internal behavior directly, rather than hiding it behind a single answer box:
-
-- **Agent Pipeline Trace Panel** — shows each node (Research → Synthesis → Critique) as it executes for a given query, including retry cycles, chunks retrieved, and the critique agent's actual pass/fail reasoning. Built by switching the LangGraph execution from `.invoke()` (final-state only) to `.stream()` (per-node state), with a cumulative-state merge to correctly track `revision_count` and `rate_limited` across the whole trace.
-- **RAGAS Evaluation Dashboard** — reads the most recent saved evaluation run and renders faithfulness / answer relevancy / context precision / context recall as live progress bars, directly in the app — turning an offline benchmark into a visible, demoable claim rather than a README bullet point.
-- **Verified / Best-Effort Badging** — every answer is tagged based on whether it passed critique, so the UI never silently presents an unverified answer as authoritative.
-- **Document Scope Indicator** — explicitly shows which uploaded document a query is scoped to, reinforcing the contamination-prevention design.
+- **Multi-user accounts** — signup/login, JWT Bearer token auth, session persistence across reloads via `sessionStorage`
+- **Conversation Sidebar** — lists past conversations per user, click to reload full history from Postgres, "New Chat" to start fresh
+- **Streaming responses** (SSE) — token-by-token answer rendering rather than waiting for the full response
+- **Agent Pipeline Trace Panel** — shows each node (Research → Synthesis → Critique) as it executes, including retry cycles and the critique agent's actual pass/fail reasoning
+- **RAGAS Evaluation Dashboard** — reads the most recent saved evaluation run and renders metrics as live progress bars
+- **Verified / Best-Effort Badging** — every answer is tagged based on whether it passed critique
+- **Document Scope Indicator** — shows which uploaded document a query is scoped to
 
 ---
 
@@ -183,23 +242,32 @@ Beyond the standard upload/query/answer flow, the frontend surfaces the multi-ag
 backend/
 ├── agents/
 │   ├── state.py              # Shared LangGraph state schema
-│   ├── research_agent.py     # Retrieval node
-│   ├── synthesis_agent.py    # Answer generation node
+│   ├── research_agent.py     # Retrieval node + summary-request detection
+│   ├── synthesis_agent.py    # Answer generation + map-reduce summarization
 │   ├── critique_agent.py     # Fact-checking node
 │   └── graph.py               # LangGraph wiring + retry routing logic
 ├── api/
-│   ├── main.py                 # FastAPI app, CORS, startup model preload
-│   ├── routes_query.py        # POST /query
+│   ├── main.py                 # FastAPI app, CORS, startup model preload + DB init
+│   ├── routes_auth.py          # POST /auth/signup, /login, /logout, GET /auth/me
+│   ├── routes_conversations.py # GET /conversations, GET /conversations/{id}
+│   ├── routes_query.py        # POST /query, POST /query/stream
 │   ├── routes_upload.py       # POST /upload
 │   ├── routes_evaluation.py   # GET /evaluation/latest
 │   └── schemas.py              # Pydantic request/response models
+├── auth/
+│   ├── security.py            # Password hashing, JWT encode/decode
+│   └── dependencies.py        # get_current_user (Bearer token) FastAPI dependency
+├── db/
+│   ├── database.py             # Async engine (NullPool), session factory
+│   ├── models.py                # User, Document, Conversation, Message
+│   └── crud.py                  # DB helpers, incl. sync wrappers for sync routes
 ├── ingestion/
 │   ├── pdf_parser.py          # PyMuPDF extraction, table detection, header detection
 │   ├── chunker.py               # Table-aware chunking
-│   └── embedder.py              # Batched embed + upload to Qdrant
+│   └── embedder.py              # Batched embed + upload to Qdrant, user_id tagging
 ├── retrieval/
 │   ├── embedding_model.py     # Lazy-loaded shared fastembed instance
-│   └── retriever.py             # Qdrant query + document scoping
+│   └── retriever.py             # Qdrant query, document + user scoping, scroll-based full-doc fetch
 ├── evaluation/
 │   ├── benchmark_dataset.py   # RAGAS question set
 │   ├── run_evaluation.py      # Pipeline runner + RAGAS scoring
@@ -208,14 +276,20 @@ backend/
 
 frontend/
 ├── src/
-│   ├── App.jsx
-│   ├── api.js                          # Centralized API calls
+│   ├── App.jsx                          # Auth gating, sidebar/chat state wiring
+│   ├── api.js                            # Centralized API calls, Bearer token handling
+│   ├── context/
+│   │   ├── AuthContext.jsx              # Auth provider
+│   │   ├── authContextInstance.js       # Context instance (Fast Refresh compatibility)
+│   │   └── useAuth.js                    # Auth hook
 │   └── components/
+│       ├── AuthPage.jsx                  # Combined login/signup
+│       ├── ConversationSidebar.jsx       # Past conversations, new chat
 │       ├── UploadPanel.jsx
-│       ├── QueryPanel.jsx
+│       ├── ChatPanel.jsx                 # Conversation-aware chat, SSE streaming
 │       ├── AnswerCard.jsx
-│       ├── AgentTracePanel.jsx     # Live pipeline trace visualization
-│       └── EvaluationDashboard.jsx  # RAGAS scores display
+│       ├── AgentTracePanel.jsx           # Live pipeline trace visualization
+│       └── EvaluationDashboard.jsx       # RAGAS scores display
 └── vercel.json                       # SPA rewrite rules
 ```
 
@@ -233,6 +307,8 @@ pip install -r requirements.txt
 GROQ_API_KEY=...
 QDRANT_URL=...
 QDRANT_API_KEY=...
+DATABASE_URL=...          # Neon pooled connection string
+JWT_SECRET_KEY=...        # generate: python -c "import secrets; print(secrets.token_hex(32))"
 
 uvicorn api.main:app --reload
 ```
@@ -262,9 +338,11 @@ python evaluation/run_evaluation.py "your-document.pdf"
 
 Documented as deliberate scope decisions, not oversights:
 
-- **Streaming token responses** (SSE/WebSocket) — would improve perceived latency but requires meaningful FastAPI + frontend architecture changes
+- **Google Sign-In (OAuth)** — deliberately deferred: existing JWT auth is already complete and tested; adding a second auth provider requires a `users` schema change (nullable password field) touching working code, for marginal portfolio value relative to the time cost mid-application-cycle
+- **Email verification** — signup currently validates email _format_ only, not deliverability; would require an email-sending service integration
 - **Multi-document reasoning** — cross-document synthesis queries; currently the system deliberately _prevents_ cross-document mixing (see contamination fix), so enabling this safely would need an explicit, opt-in multi-scope mode
-- **Conversation memory** — multi-turn follow-up queries with history-aware query rewriting
 - **Provider fallback chain** — same-provider tiered fallback (e.g. Groq 70B → Groq 8B) is safer and more defensible than cross-provider fallback given confirmed regional API restrictions encountered during development
-- **Table-lookup benchmark coverage** — table-aware chunking is implemented and tested on a synthetic multi-page table PDF, but not yet included in the RAGAS benchmark set for the primary demo document (which contains no tables)
+- **Retry-with-backoff for summarization** — map-reduce summarization can still hit Groq rate limits on very large documents or under heavy testing load; batch-size tuning reduced this significantly but didn't eliminate it
+- **Table-lookup benchmark coverage** — table-aware chunking is implemented and tested on a synthetic multi-page table PDF, but not yet included in the RAGAS benchmark set for the primary demo document
 - **Scaling the benchmark set** from 10 toward ~100 questions, batched across multiple days to respect API rate limits
+- **Re-running the RAGAS baseline** against the widened `top_k` (5→8, 8→10) — the current published scores predate that change
