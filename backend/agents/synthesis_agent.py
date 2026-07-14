@@ -54,18 +54,31 @@ MAP_SYSTEM_PROMPT = """You are summarizing ONE SECTION of a larger document, usi
 
 REDUCE_SYSTEM_PROMPT = """You are combining several section summaries of one document into a single, coherent, comprehensive summary. Synthesize into a well-organized whole covering the main themes across all sections — short paragraphs or bullet points per major theme — rather than just concatenating the section summaries back to back."""
 
-SINGLE_SHOT_WORD_LIMIT = 4000  # below this, summarize all chunks in one call;
-                                 # above it, map-reduce (see summarize_document below)
+SINGLE_SHOT_WORD_LIMIT = 6000  # Increased from 4000 — Llama-3.3-70b can handle
+                                 # 8K context comfortably, so raising this threshold
+                                 # reduces the chance of triggering map-reduce and
+                                 # its multiple API calls. Most PDFs under ~10 pages
+                                 # now summarize in a single shot (one Groq call
+                                 # instead of 3-5), avoiding rate limit issues entirely
+                                 # for small-to-medium documents.
+
+MAP_BATCH_WORD_LIMIT = 4500     # Increased from 3500 (in _batch_chunks default) —
+                                 # fewer, larger batches = fewer total API calls for
+                                 # very large documents, reducing rate limit pressure.
 
 
 def _word_count(chunks: list[dict]) -> int:
     return sum(len(c["parent_text"].split()) for c in chunks)
 
 
-def _batch_chunks(chunks: list[dict], batch_word_limit: int = 3500) -> list[list[dict]]:
+def _batch_chunks(chunks: list[dict], batch_word_limit: int = 4500) -> list[list[dict]]:
     """Groups chunks into batches by cumulative word count (not chunk count) —
     keeps each map-step prompt a predictable, safe size regardless of
-    whether individual chunks are short paragraphs or long table dumps."""
+    whether individual chunks are short paragraphs or long table dumps.
+    
+    Increased from 3500 to 4500 words per batch to reduce the total number
+    of API calls for large documents (fewer batches = fewer Groq requests).
+    """
     batches = []
     current_batch = []
     current_words = 0
@@ -82,18 +95,32 @@ def _batch_chunks(chunks: list[dict], batch_word_limit: int = 3500) -> list[list
     return batches
 
 
-def _summarize_batch(chunks: list[dict]) -> str:
+def _summarize_batch(chunks: list[dict], retry_count: int = 0) -> str:
+    """Summarize a single batch with exponential backoff retry on rate limits."""
     context = format_chunks_for_prompt(chunks)
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": MAP_SYSTEM_PROMPT},
-            {"role": "user", "content": f"Context:\n{context}\n\nSummarize this section."},
-        ],
-        temperature=0.2,
-        max_tokens=400,
-    )
-    return response.choices[0].message.content
+    max_retries = 3
+    
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": MAP_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Context:\n{context}\n\nSummarize this section."},
+            ],
+            temperature=0.2,
+            max_tokens=400,
+        )
+        return response.choices[0].message.content
+    except RateLimitError as e:
+        if retry_count >= max_retries:
+            print(f"[_summarize_batch] Rate limit hit after {max_retries} retries, giving up")
+            raise
+        
+        # Exponential backoff: 3s, 6s, 12s
+        wait_time = 3 * (2 ** retry_count)
+        print(f"[_summarize_batch] Rate limit hit, waiting {wait_time}s before retry {retry_count + 1}/{max_retries}")
+        time.sleep(wait_time)
+        return _summarize_batch(chunks, retry_count + 1)
 
 
 def _build_summary_prompt(chunks: list[dict]) -> tuple[str, str]:
@@ -111,20 +138,25 @@ def _build_summary_prompt(chunks: list[dict]) -> tuple[str, str]:
         user_content = f"Context (full document):\n{context}\n\nProvide a comprehensive summary of this document."
         return SUMMARY_SYSTEM_PROMPT, user_content
 
-    batches = _batch_chunks(chunks)
-    print(f"[summarize] document too large for single-shot ({total_words} words) — map-reduce across {len(batches)} batches")
+    batches = _batch_chunks(chunks, batch_word_limit=MAP_BATCH_WORD_LIMIT)
+    total_batches = len(batches)
+    print(f"[summarize] document too large for single-shot ({total_words} words)")
+    print(f"[summarize] using map-reduce across {total_batches} batches (~{total_words // total_batches} words each)")
+    print(f"[summarize] estimated time: ~{total_batches * 3}s (with rate limit protection)")
 
-    # Small delay between calls (not after the last one) — spaces out what
-    # would otherwise be a tight burst of back-to-back Groq requests. Free-
-    # tier rate limits are often requests-per-minute, not just tokens-per-
-    # minute, so even small/fast calls can trip a limit if fired in a burst.
-    # Cheap insurance: adds a few seconds total for a large document, in
-    # exchange for real robustness against exactly the 429 you just hit.
+    # Increased delay between batches to prevent rate limit errors.
+    # Groq free tier limits:
+    # - Llama-3.3-70b: 30 requests/minute, 14,400 tokens/minute
+    # With 2.5s delay: max 24 requests/minute (safe margin)
+    # With 3.5s delay every 5 batches: prevents sustained burst issues
     batch_summaries = []
     for i, batch in enumerate(batches):
+        print(f"[summarize] processing batch {i + 1}/{total_batches}")
         batch_summaries.append(_summarize_batch(batch))
         if i < len(batches) - 1:
-            time.sleep(1.5)
+            # Adaptive delay: longer wait after every 5 batches to avoid sustained burst
+            delay = 3.5 if (i + 1) % 5 == 0 else 2.5
+            time.sleep(delay)
 
     combined = "\n\n".join(f"Section {i + 1} summary:\n{s}" for i, s in enumerate(batch_summaries))
     user_content = f"{combined}\n\nCombine these section summaries into one comprehensive document summary."
