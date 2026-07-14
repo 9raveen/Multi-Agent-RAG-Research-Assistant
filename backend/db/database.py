@@ -50,10 +50,10 @@ if "sslmode=require" in DATABASE_URL:
 # this, a slow/unreachable database hangs the connection attempt indefinitely,
 # which blocks the whole app's startup forever with zero error message (this is
 # what caused a completely silent hang at container startup — no traceback, no
-# log line, nothing — when Neon was slow to wake from a cold start). 15s is
-# generous for a cold-start wake-up while still failing fast on a genuinely
-# dead connection instead of hanging the container indefinitely.
-_connect_args["timeout"] = 15
+# log line, nothing — when Neon was slow to wake from a cold start). 10s is
+# adequate for a cold-start wake-up while failing fast on a genuinely dead
+# connection. Reduced from 15s to prevent startup delays on HF Spaces.
+_connect_args["timeout"] = 10
 
 engine = create_async_engine(
     DATABASE_URL,

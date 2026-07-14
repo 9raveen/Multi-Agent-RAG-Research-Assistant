@@ -55,21 +55,44 @@ app.include_router(conversations_router)
 
 
 @app.on_event("startup")
-async def preload_model():
-    print("Pre-loading embedding model at startup...")
-    get_embedding_model()
-    print("Embedding model ready.")
+async def startup_tasks():
+    """Combined startup tasks with timeout protection and lazy loading"""
+    import asyncio
+    
+    print("===== Starting application initialization =====")
+    
+    # Database initialization with timeout
+    try:
+        print("1/2: Initializing database connection...")
+        await asyncio.wait_for(init_db(), timeout=30.0)
+        print("✓ Database ready")
+    except asyncio.TimeoutError:
+        print("⚠ Database initialization timed out - will retry on first request")
+    except Exception as e:
+        print(f"⚠ Database initialization failed: {e} - will retry on first request")
+    
+    # LAZY LOAD embedding model instead of preloading
+    # This prevents blocking startup - model loads on first /upload or /query request
+    print("2/2: Embedding model will load on first use (lazy loading)")
+    print("✓ Application ready to accept requests")
+    print("===== Startup complete =====")
 
 
-@app.on_event("startup")
-async def create_db_tables():
-    # Idempotent — create_all only creates tables that don't already exist.
-    # Fine to leave running on every startup at this stage of the project.
-    print("Ensuring DB tables exist...")
-    await init_db()
-    print("DB tables ready.")
+@app.get("/")
+def root():
+    """Root endpoint to verify the API is running"""
+    return {
+        "status": "running",
+        "message": "Multi-Agent RAG Research Assistant API",
+        "health_check": "/health"
+    }
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    """Health check endpoint for monitoring services"""
+    return {
+        "status": "ok",
+        "service": "Multi-Agent RAG Research Assistant",
+        "version": "0.1.0"
+    }
