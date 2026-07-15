@@ -20,6 +20,7 @@ class UserLogin(BaseModel):
 class UserOut(BaseModel):
     id: str
     email: str
+    is_guest: bool = False  # NEW: indicates if this is a temporary demo account
 
     class Config:
         from_attributes = True  # lets .from_orm-style construction work off a SQLAlchemy User row
@@ -30,6 +31,7 @@ class AuthResponse(BaseModel):
     email: str
     access_token: str
     token_type: str = "bearer"
+    is_guest: bool = False  # NEW: indicates if this is a temporary demo account
 
 
 class ChatTurnSchema(BaseModel):

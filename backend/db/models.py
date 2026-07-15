@@ -26,6 +26,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = _uuid_col()
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     hashed_pw: Mapped[str] = mapped_column(String, nullable=False)
+    is_guest: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # NEW: marks demo accounts
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     documents: Mapped[list["Document"]] = relationship(back_populates="user", cascade="all, delete-orphan")

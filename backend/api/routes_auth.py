@@ -11,6 +11,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+import secrets
 
 from api.schemas import UserCreate, UserLogin, UserOut, AuthResponse
 from auth.security import hash_password, verify_password, create_access_token
@@ -31,7 +32,7 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     user = await create_user(db, email=payload.email, hashed_pw=hash_password(payload.password))
     token = create_access_token(str(user.id))
 
-    return AuthResponse(id=str(user.id), email=user.email, access_token=token)
+    return AuthResponse(id=str(user.id), email=user.email, access_token=token, is_guest=user.is_guest)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -43,7 +44,7 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
 
     token = create_access_token(str(user.id))
-    return AuthResponse(id=str(user.id), email=user.email, access_token=token)
+    return AuthResponse(id=str(user.id), email=user.email, access_token=token, is_guest=user.is_guest)
 
 
 @router.post("/logout", status_code=204)
@@ -57,4 +58,42 @@ async def logout():
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
-    return UserOut(id=str(user.id), email=user.email)
+    return UserOut(id=str(user.id), email=user.email, is_guest=user.is_guest)
+
+
+@router.post("/guest", response_model=AuthResponse, status_code=201)
+async def create_guest_account(db: AsyncSession = Depends(get_db)):
+    """
+    Create a temporary guest account for demo purposes.
+    
+    Each guest gets:
+    - A unique, random email (guest_<random>@demo.local)
+    - A random password (never shown to user, account is ephemeral)
+    - Full access to upload PDFs and ask questions
+    - Automatic cleanup after 24 hours (via background task)
+    - Data isolation (can't see other users' documents)
+    
+    This showcases the auth/isolation system while allowing instant trial access.
+    """
+    # Generate unique guest identifier
+    guest_id = secrets.token_hex(8)  # 16-character random hex
+    guest_email = f"guest_{guest_id}@demo.local"
+    guest_password = secrets.token_urlsafe(32)  # Random password, never shown
+    
+    # Create guest user account
+    user = await create_user(
+        db, 
+        email=guest_email, 
+        hashed_pw=hash_password(guest_password),
+        is_guest=True
+    )
+    
+    # Generate auth token
+    token = create_access_token(str(user.id))
+    
+    return AuthResponse(
+        id=str(user.id), 
+        email=user.email, 
+        access_token=token,
+        is_guest=True  # Explicitly mark this as a guest account
+    )
