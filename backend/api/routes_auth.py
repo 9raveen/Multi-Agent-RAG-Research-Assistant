@@ -31,8 +31,9 @@ async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
     user = await create_user(db, email=payload.email, hashed_pw=hash_password(payload.password))
     token = create_access_token(str(user.id))
+    is_guest = getattr(user, 'is_guest', False)
 
-    return AuthResponse(id=str(user.id), email=user.email, access_token=token, is_guest=user.is_guest)
+    return AuthResponse(id=str(user.id), email=user.email, access_token=token, is_guest=is_guest)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -44,7 +45,8 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
 
     token = create_access_token(str(user.id))
-    return AuthResponse(id=str(user.id), email=user.email, access_token=token, is_guest=user.is_guest)
+    is_guest = getattr(user, 'is_guest', False)
+    return AuthResponse(id=str(user.id), email=user.email, access_token=token, is_guest=is_guest)
 
 
 @router.post("/logout", status_code=204)
@@ -58,7 +60,8 @@ async def logout():
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
-    return UserOut(id=str(user.id), email=user.email, is_guest=user.is_guest)
+    is_guest = getattr(user, 'is_guest', False)  # Safe fallback if column doesn't exist yet
+    return UserOut(id=str(user.id), email=user.email, is_guest=is_guest)
 
 
 @router.post("/guest", response_model=AuthResponse, status_code=201)
