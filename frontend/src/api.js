@@ -74,10 +74,31 @@ export async function login(email, password) {
   return data;
 }
 
+export async function createGuestAccount() {
+  const response = await fetch(`${API_BASE_URL}/auth/guest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!response.ok) {
+    await parseErrorOrThrow(
+      response,
+      `Failed to create demo account (${response.status})`,
+    );
+  }
+  const data = await response.json();
+  setStoredToken(data.access_token);
+  // Store guest flag for UI purposes
+  if (data.is_guest) {
+    sessionStorage.setItem("is_guest", "true");
+  }
+  return data;
+}
+
 export async function logout() {
   // Stateless JWT — nothing meaningful to await server-side. Clear the
   // local token immediately; fire the endpoint best-effort for API symmetry.
   clearStoredToken();
+  sessionStorage.removeItem("is_guest"); // Clear guest flag
   fetch(`${API_BASE_URL}/auth/logout`, {
     method: "POST",
     headers: authHeaders(),

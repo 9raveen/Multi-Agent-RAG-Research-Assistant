@@ -3,6 +3,7 @@ import { useAuth } from "./context/useAuth";
 import { getConversation } from "./api";
 import CoverPage from "./components/CoverPage";
 import AuthPage from "./components/AuthPage";
+import GuestBanner from "./components/GuestBanner";
 import UploadPanel from "./components/UploadPanel";
 import ChatPanel from "./components/ChatPanel";
 import ConversationSidebar from "./components/ConversationSidebar";
@@ -113,6 +114,7 @@ export default function App() {
 
   return (
     <div className="app-dashboard">
+      <GuestBanner />
       <div className="dashboard-layout">
         {sidebarOpen && (
           <div

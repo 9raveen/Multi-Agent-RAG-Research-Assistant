@@ -1,0 +1,134 @@
+/* GuestBanner.css */
+
+.guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 2px solid #f59e0b;
+  font-size: 0.875rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+[data-theme="dark"] .guest-banner {
+  background: linear-gradient(90deg, #78350f 0%, #92400e 100%);
+  border-bottom-color: #b45309;
+}
+
+.guest-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.guest-banner-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.guest-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-family: "Inter", sans-serif;
+}
+
+.guest-banner-text strong {
+  font-weight: 700;
+  color: #92400e;
+  font-family: "Space Mono", monospace;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+[data-theme="dark"] .guest-banner-text strong {
+  color: #fbbf24;
+}
+
+.guest-banner-separator {
+  color: #d97706;
+  font-weight: 300;
+}
+
+[data-theme="dark"] .guest-banner-separator {
+  color: #f59e0b;
+}
+
+.guest-banner-text span:not(.guest-banner-separator) {
+  color: #78350f;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .guest-banner-text span:not(.guest-banner-separator) {
+  color: #fde68a;
+}
+
+.guest-banner-btn {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 2px solid #f59e0b;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: "Inter", sans-serif;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .guest-banner-btn {
+  background: #1f2937;
+  color: #fbbf24;
+  border-color: #b45309;
+}
+
+.guest-banner-btn:hover {
+  background: #f59e0b;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="dark"] .guest-banner-btn:hover {
+  background: #b45309;
+  color: white;
+}
+
+.guest-banner-btn::before {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .guest-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .guest-banner-content {
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .guest-banner-text {
+    justify-content: center;
+  }
+  
+  .guest-banner-btn {
+    width: 100%;
+  }
+}

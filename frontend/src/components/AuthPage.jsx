@@ -11,12 +11,13 @@ import BB8Toggle from "./BB8Toggle";
 import "./AuthPage.css";
 
 export default function AuthPage({ onBack, theme, onToggleTheme }) {
-  const { login, signup } = useAuth();
+  const { login, signup, tryDemo } = useAuth();
   const [mode, setMode] = useState("login"); // "login" | "signup"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,6 +42,19 @@ export default function AuthPage({ onBack, theme, onToggleTheme }) {
   const toggleMode = () => {
     setMode((m) => (m === "login" ? "signup" : "login"));
     setError("");
+  };
+
+  const handleTryDemo = async () => {
+    setDemoLoading(true);
+    setError("");
+    try {
+      await tryDemo();
+      // User will be automatically logged in and redirected via AuthContext
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDemoLoading(false);
+    }
   };
 
   return (
@@ -138,6 +152,22 @@ export default function AuthPage({ onBack, theme, onToggleTheme }) {
                   : "Create account"}
             </button>
           </form>
+
+          <div className="demo-divider">
+            <span>or</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTryDemo}
+            disabled={demoLoading}
+            className="demo-btn"
+          >
+            {demoLoading ? "⏳ Creating demo..." : "🚀 Try Demo"}
+          </button>
+          <p className="demo-note">
+            No signup required • Full access • 24 hour workspace
+          </p>
 
           <p className="auth-toggle-text">
             {mode === "login" ? "New to MARA? " : "Already have an account? "}

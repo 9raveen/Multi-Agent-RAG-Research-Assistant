@@ -33,13 +33,19 @@ export function AuthProvider({ children }) {
     return u;
   }, []);
 
+  const tryDemo = useCallback(async () => {
+    const u = await api.createGuestAccount();
+    setUser(u);
+    return u;
+  }, []);
+
   const logout = useCallback(async () => {
     await api.logout();
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, tryDemo, logout }}>
       {children}
     </AuthContext.Provider>
   );
