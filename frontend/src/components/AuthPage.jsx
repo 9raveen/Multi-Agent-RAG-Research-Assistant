@@ -80,7 +80,7 @@ export default function AuthPage({ onBack, theme, onToggleTheme }) {
         </div>
         <div className="auth-left-footer">
           <span>VOL. 01</span>
-          <span>EST. MMXXIV</span>
+          <span>EST. MMXXVI</span>
         </div>
       </div>
 
