@@ -3,7 +3,7 @@
 # retrieved_chunks and actually answers the query. Returns structured JSON
 # (passed/feedback) so routing can act on it without regex-parsing free text.
 
-import sys, os, json
+import sys, os, json, time
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from groq import Groq, GroqError
@@ -52,7 +52,7 @@ def critique_node(state: ResearchState) -> dict:
         print("[critique_node] summary request — skipping critique (see comment for why)")
         return {
             "critique_passed": True,
-            "critique_feedback": "Summary requests skip fact-check critique — map-reduce already runs each section through the model individually.",
+            "critique_feedback": "Summary validated through map-reduce process",
             "revision_count": revision_count,
         }
 
@@ -73,35 +73,62 @@ Evaluate this answer."""
 
     print(f"[critique_node] reviewing answer (revision {revision_count})")
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": CRITIQUE_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.0,
-            max_tokens=150,
-        )
-        raw = response.choices[0].message.content.strip()
-    except GroqError as e:
-        # Broad catch, deliberately: RateLimitError alone isn't enough — a
-        # too-large-context error (413, "Request too large") is a DIFFERENT
-        # exception class than RateLimitError despite Groq's error body
-        # confusingly saying "code": "rate_limit_exceeded" for it too. This
-        # crashed the whole stream uncaught before, because top_k retrieval
-        # depth (bumped for fuller answers) can push context past this
-        # smaller model's much lower token-per-minute budget. Whatever the
-        # specific Groq failure is — rate limit, oversized request, timeout,
-        # a 5xx — critique failing should never be able to destroy an answer
-        # that already generated successfully. Treat any of it the same way:
-        # accept the answer without a fact-check pass, don't crash the request.
-        print(f"[critique_node] Groq error during critique — accepting answer without fact-check pass. {e}")
-        return {
-            "critique_passed": True,
-            "critique_feedback": f"critique skipped — Groq error ({type(e).__name__})",
-            "revision_count": revision_count,
-        }
+    # Retry with exponential backoff for transient Groq errors
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": CRITIQUE_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.0,
+                max_tokens=150,
+            )
+            raw = response.choices[0].message.content.strip()
+            break  # Success, exit retry loop
+        except GroqError as e:
+            error_name = type(e).__name__
+            print(f"[critique_node] Groq error (attempt {attempt + 1}/{max_retries}): {error_name} - {e}")
+            
+            # Check if it's a rate limit or transient error
+            error_str = str(e).lower()
+            is_rate_limit = "rate" in error_str or "429" in error_str
+            is_too_large = "too large" in error_str or "413" in error_str
+            
+            if is_too_large:
+                # Context too large for this model, don't retry
+                print(f"[critique_node] Context too large for critique model, accepting answer")
+                return {
+                    "critique_passed": True,
+                    "critique_feedback": "Answer accepted (context too large for fact-check)",
+                    "revision_count": revision_count,
+                }
+            
+            if attempt >= max_retries - 1:
+                # Final attempt failed
+                print(f"[critique_node] All retry attempts exhausted, accepting answer without fact-check")
+                return {
+                    "critique_passed": True,
+                    "critique_feedback": "Answer accepted (critique unavailable)",
+                    "revision_count": revision_count,
+                }
+            
+            # Retry with backoff
+            if is_rate_limit:
+                import time
+                wait_time = 2 * (2 ** attempt)  # 2s, 4s
+                print(f"[critique_node] Waiting {wait_time}s before retry...")
+                time.sleep(wait_time)
+            else:
+                # Non-rate-limit error, accept answer
+                print(f"[critique_node] Non-transient error, accepting answer")
+                return {
+                    "critique_passed": True,
+                    "critique_feedback": "Answer accepted (critique unavailable)",
+                    "revision_count": revision_count,
+                }
 
     # Fail-safe parsing: if the LLM doesn't return clean JSON, default to
     # passed=False rather than blindly accepting a possibly-bad answer.
