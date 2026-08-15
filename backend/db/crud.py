@@ -72,6 +72,17 @@ async def _get_document_id_for_scope(db: AsyncSession, user_id: uuid.UUID, sourc
     return doc.id if doc else None
 
 
+async def _get_document_scope_for_conversation(db: AsyncSession, conversation: Conversation) -> str | None:
+    """Get the document filename for a conversation from its document_id."""
+    if not conversation.document_id:
+        return None
+    result = await db.execute(
+        select(Document).where(Document.id == conversation.document_id)
+    )
+    doc = result.scalar_one_or_none()
+    return doc.source_file if doc else None
+
+
 async def _get_or_create_conversation_async(
     db: AsyncSession,
     user_id: uuid.UUID,

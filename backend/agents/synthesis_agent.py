@@ -11,6 +11,47 @@ from agents.state import ResearchState
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# Synthesis model is configurable via environment for easy migration.
+# Default to the Groq-hosted Llama model so the site continues to work out-of-the-box.
+# You may set SYNTHESIS_MODEL to another provider/model name, and optionally
+# set SYNTHESIS_FALLBACKS (comma-separated) to try other model names if the
+# chosen model isn't available through the provider/client.
+SYNTHESIS_MODEL = os.getenv("SYNTHESIS_MODEL", "llama-3.3-70b-versatile")
+SYNTHESIS_FALLBACKS = [m.strip() for m in os.getenv("SYNTHESIS_FALLBACKS", "llama-3.1-8b-instant").split(",") if m.strip()]
+# Combined try-order (first the requested model, then configured fallbacks)
+MODEL_TRY_ORDER = [SYNTHESIS_MODEL] + [m for m in SYNTHESIS_FALLBACKS if m != SYNTHESIS_MODEL]
+# Import NotFoundError for graceful fallback handling
+from groq import NotFoundError
+
+
+def _create_chat_completion(messages, **kwargs):
+    """Wrapper around client.chat.completions.create that attempts multiple
+    model names in MODEL_TRY_ORDER if the provider reports model_not_found.
+
+    Returns the same value as client.chat.completions.create. If stream=True,
+    the returned object is an iterator/generator from the client; callers must
+    handle streaming as before.
+    """
+    last_err = None
+    for model in MODEL_TRY_ORDER:
+        try:
+            print(f"[model-fallback] trying model: {model}")
+            return client.chat.completions.create(model=model, messages=messages, **kwargs)
+        except NotFoundError as e:
+            print(f"[model-fallback] model not found or no access: {model} — trying next fallback if any")
+            last_err = e
+            continue
+        except RateLimitError:
+            # Rate limit and other transient errors should bubble up to existing
+            # retry handlers; re-raise so calling code can handle them.
+            raise
+        except Exception:
+            # Any other unexpected error should be propagated — don't silently
+            # swallow errors other than model-not-found.
+            raise
+    # If we reach here, all models failed with NotFoundError
+    raise last_err if last_err is not None else Exception("No models available")
+
 
 SYSTEM_PROMPT = """You are a research assistant. Answer the user's question using ONLY the information in the provided context below.
 
@@ -101,8 +142,7 @@ def _summarize_batch(chunks: list[dict], retry_count: int = 0) -> str:
     max_retries = 3
     
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        response = _create_chat_completion(
             messages=[
                 {"role": "system", "content": MAP_SYSTEM_PROMPT},
                 {"role": "user", "content": f"Context:\n{context}\n\nSummarize this section."},
@@ -170,8 +210,7 @@ def summarize_document(chunks: list[dict]) -> str:
 
     system_prompt, user_content = _build_summary_prompt(chunks)
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+    response = _create_chat_completion(
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
@@ -195,8 +234,7 @@ def summarize_document_stream(chunks: list[dict]):
 
     system_prompt, user_content = _build_summary_prompt(chunks)
 
-    stream = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+    stream = _create_chat_completion(
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
@@ -230,8 +268,7 @@ Question: {query}
 
 Answer using only the context above."""
 
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+            response = _create_chat_completion(
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
@@ -276,7 +313,7 @@ Question: {query}
 Answer using only the context above."""
 
     stream = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=SYNTHESIS_MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
