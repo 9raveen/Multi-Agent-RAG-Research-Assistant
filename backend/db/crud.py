@@ -4,11 +4,18 @@
 
 import uuid
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import AsyncSessionLocal
 from db.models import User, Document, Conversation, Message
+
+# A single shared executor used by run_sync().
+# Each submitted task creates its own event loop inside the worker thread,
+# fully isolated from Uvicorn's event loop — safe for HTTP/2 keep-alive
+# connections where the same OS thread may be reused across multiple requests.
+_DB_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crud-sync")
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
@@ -45,10 +52,12 @@ async def create_document(db: AsyncSession, user_id: uuid.UUID, source_file: str
 #
 # routes_query.py's /query and /query/stream are sync `def` routes (the
 # LangGraph pipeline underneath is blocking, not async) — FastAPI runs sync
-# routes in a worker thread with no event loop already active, so the
-# `run_sync()` wrappers below are safe to call with asyncio.run() from
-# there. They open their OWN db session rather than reusing one injected
-# via Depends(get_db), since an AsyncSession created in the request's event
+# routes in a worker thread. run_sync() below uses a dedicated executor so
+# each DB call gets its own isolated event loop, fully decoupled from
+# Uvicorn's loop. This prevents ERR_HTTP2_PROTOCOL_ERROR on follow-up
+# messages where the same OS thread may be reused across requests.
+# They open their OWN db session rather than reusing one injected via
+# Depends(get_db), since an AsyncSession created in the request's event
 # loop can't safely be awaited from a different thread/loop.
 #
 # Everywhere else (routes_conversations.py, an async route) — use the
@@ -56,7 +65,25 @@ async def create_document(db: AsyncSession, user_id: uuid.UUID, source_file: str
 # as create_user/create_document above.
 
 def run_sync(coro):
-    return asyncio.run(coro)
+    """
+    Run an async coroutine synchronously from a sync context.
+
+    Uses a dedicated ThreadPoolExecutor so each call gets a fresh event loop
+    in a worker thread that is completely isolated from Uvicorn's own loop.
+    This is safe to call from a streaming generator on an HTTP/2 connection
+    where asyncio.run() would raise "This event loop is already running".
+    """
+    def _run_in_new_loop():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    future = _DB_EXECUTOR.submit(_run_in_new_loop)
+    return future.result()
 
 
 async def _get_document_id_for_scope(db: AsyncSession, user_id: uuid.UUID, source_file: str | None) -> uuid.UUID | None:
