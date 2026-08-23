@@ -78,7 +78,7 @@ Evaluate this answer."""
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="openai/gpt-oss-120b",
                 messages=[
                     {"role": "system", "content": CRITIQUE_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},

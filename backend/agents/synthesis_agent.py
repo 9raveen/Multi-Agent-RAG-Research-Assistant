@@ -12,12 +12,14 @@ load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 # Synthesis model is configurable via environment for easy migration.
-# Default to the Groq-hosted Llama model so the site continues to work out-of-the-box.
+# Default to Groq-hosted GPT-OSS-120B — llama-3.3-70b-versatile and
+# llama-3.1-8b-instant are both deprecated on Groq, shutting down
+# 2026-08-16, so neither belongs as the default or fallback anymore.
 # You may set SYNTHESIS_MODEL to another provider/model name, and optionally
 # set SYNTHESIS_FALLBACKS (comma-separated) to try other model names if the
 # chosen model isn't available through the provider/client.
-SYNTHESIS_MODEL = os.getenv("SYNTHESIS_MODEL", "llama-3.3-70b-versatile")
-SYNTHESIS_FALLBACKS = [m.strip() for m in os.getenv("SYNTHESIS_FALLBACKS", "llama-3.1-8b-instant").split(",") if m.strip()]
+SYNTHESIS_MODEL = os.getenv("SYNTHESIS_MODEL", "openai/gpt-oss-120b")
+SYNTHESIS_FALLBACKS = [m.strip() for m in os.getenv("SYNTHESIS_FALLBACKS", "openai/gpt-oss-20b").split(",") if m.strip()]
 # Combined try-order (first the requested model, then configured fallbacks)
 MODEL_TRY_ORDER = [SYNTHESIS_MODEL] + [m for m in SYNTHESIS_FALLBACKS if m != SYNTHESIS_MODEL]
 # Import NotFoundError for graceful fallback handling
@@ -95,13 +97,14 @@ MAP_SYSTEM_PROMPT = """You are summarizing ONE SECTION of a larger document, usi
 
 REDUCE_SYSTEM_PROMPT = """You are combining several section summaries of one document into a single, coherent, comprehensive summary. Synthesize into a well-organized whole covering the main themes across all sections — short paragraphs or bullet points per major theme — rather than just concatenating the section summaries back to back."""
 
-SINGLE_SHOT_WORD_LIMIT = 6000  # Increased from 4000 — Llama-3.3-70b can handle
-                                 # 8K context comfortably, so raising this threshold
-                                 # reduces the chance of triggering map-reduce and
-                                 # its multiple API calls. Most PDFs under ~10 pages
-                                 # now summarize in a single shot (one Groq call
-                                 # instead of 3-5), avoiding rate limit issues entirely
-                                 # for small-to-medium documents.
+SINGLE_SHOT_WORD_LIMIT = 6000  # Increased from 4000 — GPT-OSS-120B handles a
+                                 # 131K context comfortably, so raising this
+                                 # threshold reduces the chance of triggering
+                                 # map-reduce and its multiple API calls. Most
+                                 # PDFs under ~10 pages now summarize in a single
+                                 # shot (one Groq call instead of 3-5), avoiding
+                                 # rate limit issues entirely for small-to-medium
+                                 # documents.
 
 MAP_BATCH_WORD_LIMIT = 4500     # Increased from 3500 (in _batch_chunks default) —
                                  # fewer, larger batches = fewer total API calls for
@@ -185,9 +188,9 @@ def _build_summary_prompt(chunks: list[dict]) -> tuple[str, str]:
     print(f"[summarize] estimated time: ~{total_batches * 3}s (with rate limit protection)")
 
     # Increased delay between batches to prevent rate limit errors.
-    # Groq free tier limits:
-    # - Llama-3.3-70b: 30 requests/minute, 14,400 tokens/minute
-    # With 2.5s delay: max 24 requests/minute (safe margin)
+    # Groq free tier limits vary by model — keep a conservative delay so
+    # a large document's map step doesn't burst past the per-minute cap.
+    # With 2.5s delay: comfortable safety margin under typical free-tier RPM.
     # With 3.5s delay every 5 batches: prevents sustained burst issues
     batch_summaries = []
     for i, batch in enumerate(batches):
