@@ -27,26 +27,26 @@ qdrant = QdrantClient(
 def retrieve(query: str, top_k: int = 5, source_file: str | None = None, user_id: str | None = None) -> list[dict]:
     """
     Embed the query and search Qdrant for the top_k most similar chunks.
-    If source_file is given, restricts search to only chunks from that document
-    — prevents cross-document contamination (e.g. asking about doc A and
-    getting answers pulled from an unrelated doc B sitting in the same collection).
 
-    If user_id is given, ALSO restricts search to only that user's own points
-    (Phase 8) — prevents User A's queries from ever retrieving User B's
-    uploaded documents, even if they happened to name a file the same thing.
-    This is AND'd with source_file, not a replacement for it: both conditions
-    must hold for a point to match.
+    user_id is REQUIRED — every query must be scoped to the authenticated
+    user's own documents. Raising here (rather than silently querying without
+    a filter) prevents data leaks if the caller forgets to pass user_id.
+
+    source_file further restricts to a specific document within that user's
+    collection when document_scope is set.
     """
+    if not user_id:
+        raise ValueError("user_id is required for retrieval — unauthenticated queries are not allowed.")
+
     model = get_embedding_model()  # lazy load — reuses the same instance embedder.py loaded
     query_vector = list(model.embed([query]))[0].tolist()
 
-    conditions = []
+    # user_id is always required (guard above ensures it's set)
+    conditions = [FieldCondition(key="user_id", match=MatchValue(value=user_id))]
     if source_file:
         conditions.append(FieldCondition(key="source_file", match=MatchValue(value=source_file)))
-    if user_id:
-        conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
 
-    query_filter = Filter(must=conditions) if conditions else None
+    query_filter = Filter(must=conditions)
 
     response = qdrant.query_points(
         collection_name=COLLECTION_NAME,
@@ -77,20 +77,16 @@ def retrieve_all_chunks(source_file: str, user_id: str | None = None) -> list[di
     Fetch EVERY chunk belonging to one document, in original reading order —
     not similarity search. Exists specifically for document summarization.
 
-    Top-k similarity search (retrieve() above) is the wrong tool for
-    "summarize this document": a summarization query is topically generic,
-    so vector search has no strong signal for what's important and just
-    returns some semantically-average handful of chunks — not comprehensive
-    coverage. A real summary needs the whole document, not the 5-8 chunks
-    that happen to be closest to the word "summarize."
-
-    Uses Qdrant's scroll() API (pagination through ALL matching points)
-    rather than query_points() (nearest-neighbor search) — scroll has no
-    query vector at all, it just walks every point matching the filter.
+    user_id is REQUIRED for the same data isolation reason as retrieve().
+    Raises immediately if not provided.
     """
-    conditions = [FieldCondition(key="source_file", match=MatchValue(value=source_file))]
-    if user_id:
-        conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
+    if not user_id:
+        raise ValueError("user_id is required for retrieval — unauthenticated queries are not allowed.")
+
+    conditions = [
+        FieldCondition(key="user_id", match=MatchValue(value=user_id)),
+        FieldCondition(key="source_file", match=MatchValue(value=source_file)),
+    ]
     scroll_filter = Filter(must=conditions)
 
     all_points = []

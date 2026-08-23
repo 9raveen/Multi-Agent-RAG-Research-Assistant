@@ -97,23 +97,19 @@ def ensure_collection_exists():
 
 # ── Point ID Generation ──────────────────────────────────────────────────────
 
-def chunk_id_to_point_id(chunk_id: str) -> str:
+def chunk_id_to_point_id(chunk_id: str, user_id: str | None = None) -> str:
     """
-    Deterministic UUID derived from chunk_id.
+    Deterministic UUID derived from chunk_id AND user_id.
 
-    Why: PointStruct previously used uuid.uuid4() (random) for id, which
-    meant re-running embedder.py on the same PDF created brand-new points
-    every time instead of overwriting the old ones — Qdrant's upsert only
-    overwrites when the ID matches exactly. Random IDs never match, so every
-    test run silently accumulated duplicate copies of the same chunks.
-
-    Fix: hash chunk_id (which is itself deterministic — same file + same
-    page + same chunk index always produces the same chunk_id) into a
-    stable UUID. Same content → same point ID → upsert overwrites instead
-    of duplicating. Different content → different chunk_id → different
-    point ID → no collision.
+    Why user_id is included:
+    If two users upload a file with the same name, chunk_id (which is derived
+    from filename + page + index) would be identical for both. Without user_id
+    in the hash, upsert() silently overwrites User A's point with User B's —
+    causing cross-user data corruption. Including user_id in the hash makes
+    each user's point IDs independent even for identical filenames.
     """
-    return str(uuid.UUID(hashlib.md5(chunk_id.encode()).hexdigest()))
+    key = f"{user_id}:{chunk_id}" if user_id else chunk_id
+    return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
 
 
 # ── Embedding ───────────────────────────────────────────────────────────────
@@ -125,10 +121,13 @@ def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: 
     hosts (Render free tier: 512MB). Large documents (20+ chunks) were
     causing OOM when the full batch was embedded before any upload happened.
 
-    user_id (Phase 8): stamped onto every point's payload so retriever.py
-    can filter to one user's own documents. None is allowed (pre-Phase-8
-    points, or an unauthenticated ingestion path) and simply omits the field.
+    user_id is REQUIRED for data isolation. Every point must carry a user_id
+    payload field so retriever.py's FieldCondition filter can exclude other
+    users' documents. Points without user_id would leak to all users.
     """
+    if not user_id:
+        raise ValueError("user_id is required for ingestion — unauthenticated uploads are not allowed.")
+
     model = get_embedding_model()
     total_uploaded = 0
 
@@ -150,12 +149,11 @@ def embed_chunks_and_upload(chunks: list[dict], qdrant_client, collection_name: 
                 "parent_chunk_id": chunk["parent_chunk_id"],
                 "chunk_index": chunk["chunk_index"],
                 "chunk_type": chunk["chunk_type"],
+                "user_id": user_id,  # always set — required for data isolation
             }
-            if user_id:
-                payload["user_id"] = user_id
             points.append(
                 PointStruct(
-                    id=chunk_id_to_point_id(chunk["chunk_id"]),
+                    id=chunk_id_to_point_id(chunk["chunk_id"], user_id=user_id),
                     vector=embedding.tolist(),
                     payload=payload,
                 )
